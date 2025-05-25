@@ -1,0 +1,40 @@
+# Node.js dependencies
+node_modules/
+dist/
+
+# TypeScript build output
+# Assuming 'tsc' outputs to a 'dist' folder
+# If you build to 'build' or 'out', include those instead
+*.js.map
+*.d.ts
+*.tsbuildinfo # TypeScript build info file
+
+# Environment variables
+.env
+.env.local
+.env.*.local
+
+# npm debug logs
+npm-debug.log*
+.npm/
+.yarn/
+
+# Editor/IDE specific files
+.vscode/ # VS Code settings, if not shared
+.idea/   # IntelliJ/WebStorm IDE files
+*.sublime-project
+*.sublime-workspace
+.DS_Store # macOS specific
+Thumbs.db # Windows specific
+
+# Operating System files
+.DS_Store
+ehthumbs.db
+.cache/
+.project
+.settings
+tmp/
+
+# Logs
+logs/
+*.log
