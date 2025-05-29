@@ -1,9 +1,10 @@
 
 import { createClient } from 'redis';
 
-const publisher = createClient();
-await publisher.connect();
+const pub = createClient();
+
+pub.connect().catch(console.error);
 
 export const publishMessage = async (channel: string, message: string) => {
-  await publisher.publish(channel, message);
+  await pub.publish(channel, message);
 };
