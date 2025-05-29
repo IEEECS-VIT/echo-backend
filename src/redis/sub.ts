@@ -2,11 +2,15 @@
 import { createClient } from 'redis';
 import { Server } from 'socket.io';
 
-const subscriber = createClient();
-await subscriber.connect();
+const sub = createClient();
 
-export const subscribeToChannel = (channel: string, io: Server) => {
-  subscriber.subscribe(channel, (message) => {
-    io.emit(channel, message);
+sub.connect().catch(console.error);
+
+export const subscribeToChannel = (io: Server) => {
+  sub.pSubscribe('chat:*', (message, channel) => {
+    const channelId = channel.split(':')[1]; // "chat:abc123" → "abc123"
+    const parsedMessage = JSON.parse(message);
+    io.to(channelId).emit('chat_message', parsedMessage);
   });
 };
+
