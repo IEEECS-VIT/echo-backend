@@ -43,7 +43,7 @@ io.on('connection', (socket) => {
 subscribeToChannel(io);
 setupVoiceSocket(io);
 
-httpServer.listen(PORT, () => {
+app.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);
 });
 
