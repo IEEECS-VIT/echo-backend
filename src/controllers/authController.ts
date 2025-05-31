@@ -7,11 +7,13 @@ import prisma from '../prisma/client';
 const ACCESS_TOKEN_SECRET = process.env.JWT_SECRET || 'your_access_secret';
 const REFRESH_TOKEN_SECRET = process.env.REFRESH_SECRET || 'your_refresh_secret';
 
+//test route
 export const testRoute = (_req: Request, res: Response) => {
   console.log("Test route hit");
   res.status(200).json({ message: 'Test route is working!' });
 };
 
+//registration route
 export const register = async (req: Request, res: Response):Promise<void> => {
   const { email, username, password } = req.body;
   try {
@@ -41,6 +43,7 @@ export const register = async (req: Request, res: Response):Promise<void> => {
   }
 };
 
+//login route
 export const login = async (req: Request, res: Response): Promise<void> => {
   const { email, password } = req.body;
   try {
@@ -75,6 +78,7 @@ export const login = async (req: Request, res: Response): Promise<void> => {
   }
 };
 
+//refresh tokens
 export const refreshToken = async (req: Request, res: Response): Promise<void> => {
   const cookies = req.cookies;
 
@@ -99,5 +103,39 @@ export const refreshToken = async (req: Request, res: Response): Promise<void> =
     res.json({ accessToken: newAccessToken });
   } catch (err) {
     res.status(403).json({ message: 'Token expired or invalid', error: err });
+  }
+};
+
+//logout route
+export const logout = async (req: Request, res: Response): Promise<void> => {
+  const cookies = req.cookies;
+  if (!cookies?.jwt) {
+    res.sendStatus(204)
+    return; 
+  }
+
+  const refreshToken = cookies.jwt;
+
+  try {
+    const user = await prisma.user.findFirst({
+      where: { refreshToken },
+    });
+
+    if (user) {
+      await prisma.user.update({
+        where: { id: user.id },
+        data: { refreshToken: null },
+      });
+    }
+    res.clearCookie('jwt', {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'strict',
+    });
+
+    res.status(200).json({messasge: 'Log out successgfully '}); 
+  } catch (err) {
+    console.error('Logout error:', err);
+    res.status(500).json({ message: 'Server error' });
   }
 };
