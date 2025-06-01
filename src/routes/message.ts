@@ -1,4 +1,5 @@
 /* AUTH MIDDLEWARE HAS NOT BEEN ADDED YET , please remove this line once added */
+require('dotenv').config();
 
 
 const express = require('express');
