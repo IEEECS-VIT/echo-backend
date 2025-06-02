@@ -1,5 +1,5 @@
 import express, { Request, Response } from 'express'
-const messages = require('./routes/message');
+import messages from './routes/message'
 
 const app = express()
 const PORT = process.env.PORT || 5000
