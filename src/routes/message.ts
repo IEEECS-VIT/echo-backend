@@ -1,4 +1,4 @@
-/* AUTH MIDDLEWARE HAS NOT BEEN ADDED YET , please remove this line once added */
+/* AUTH MIDDLEWARE HAS NOT BEEN ADDED YET */
 import express from "express";
 const router = express.Router();
 
@@ -8,7 +8,7 @@ const upload = multer({ storage });
 
 import { messagePostController } from "../controllers/messageController";
 
-/*change the rest route below to the socket architecture as needed */
+/*IMPORTANT : change the REST route below to the socket architecture as needed */
 
 /*IMPORTANT : implement the auth middleware*/
 
