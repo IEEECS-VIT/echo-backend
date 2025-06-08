@@ -5,6 +5,7 @@ import authRoutes from './routes/auth';
 import cookieParser from 'cookie-parser';
 import express, { Request, Response } from 'express';
 import messages from './routes/message';
+import profileRoutes from './routes/profile';
 import './client/supabase';
 import { checkBucketConnection } from './lib/storage';
 
@@ -22,6 +23,7 @@ app.get('/', (_req: Request, res: Response) => {
 
 app.use('/api/auth', authRoutes);
 app.use('/api/message', messages);
+app.use('/api/profiles', profileRoutes);
 
 app.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);
