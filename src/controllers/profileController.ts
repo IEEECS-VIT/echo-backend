@@ -1,29 +1,38 @@
 import { Request, Response } from 'express';
+import { supabase } from '../client/supabase';
+import jwt from 'jsonwebtoken';
 
-let profiles: { id: number; name: string; email: string }[] = [];
-let idCounter = 1;
+export const updateProfile = async (req: Request, res: Response) => {
+  try {
+    const authHeader = req.headers.authorization;
+    if (!authHeader?.startsWith('Bearer ')) {
+      return res.status(401).json({ error: 'No or invalid token provided' });
+    }
 
-export const createProfile = (req: Request, res: Response) => {
-  const { name, email } = req.body;
-  const newProfile = { id: idCounter++, name, email };
-  profiles.push(newProfile);
-  res.status(201).json(newProfile);
-};
+    const token = authHeader.split(' ')[1];
 
-export const getProfiles = (req: Request, res: Response) => {
-  res.json(profiles);
-};
+    const decoded = jwt.decode(token) as { email?: string };
+    const email = decoded?.email;
 
-export const getProfileById = (req: Request, res: Response) => {
-  const profile = profiles.find(p => p.id === parseInt(req.params.id));
-  if (!profile) return res.status(404).json({ error: 'Profile not found' });
-  res.json(profile);
-};
+    if (!email) {
+      return res.status(400).json({ error: 'Email not found in token' });
+    }
 
-export const deleteProfile = (req: Request, res: Response) => {
-  const id = parseInt(req.params.id);
-  const index = profiles.findIndex(p => p.id === id);
-  if (index === -1) return res.status(404).json({ error: 'Profile not found' });
-  const deleted = profiles.splice(index, 1)[0];
-  res.json({ message: 'Profile deleted', profile: deleted });
+    const { name, bio, avatar_url } = req.body;
+
+    const { data, error } = await supabase
+      .from('profiles')
+      .update({ name, bio, avatar_url }) 
+      .eq('email', email)
+      .select();
+
+    if (error) {
+      return res.status(500).json({ error: error.message });
+    }
+
+    res.status(200).json({ message: 'Profile updated', profile: data?.[0] });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Something went wrong' });
+  }
 };
