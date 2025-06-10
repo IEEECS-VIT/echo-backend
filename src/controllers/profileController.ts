@@ -13,15 +13,18 @@ export const updateProfile = async (req: AuthenticatedRequest, res: Response) =>
   if (!email) {
     return res.status(400).json({ error: 'User email not found in request' });
   }
-  const { name, bio } = req.body;
+
+  const { username, bio } = req.body;
   const avatarFile = req.file;
-  let publicUrl: string | undefined;
+
+  let avatarUrl: string | undefined;
+
   if (avatarFile) {
     const ext = path.extname(avatarFile.originalname);
     const fileName = `${uuidv4()}${ext}`;
 
     const { error: uploadError } = await supabase.storage
-      .from('avatars')
+      .from('avatars') 
       .upload(fileName, avatarFile.buffer, {
         contentType: avatarFile.mimetype,
         upsert: true
@@ -32,12 +35,12 @@ export const updateProfile = async (req: AuthenticatedRequest, res: Response) =>
     }
 
     const { data: publicUrlData } = supabase.storage.from('avatars').getPublicUrl(fileName);
-    publicUrl = publicUrlData?.publicUrl;
+    avatarUrl = publicUrlData?.publicUrl;
   }
 
   const { data, error } = await supabase
-    .from('users')
-    .update({ name, bio, publicUrl }) 
+    .from('User') 
+    .update({ username, bio, avatarUrl }) 
     .eq('email', email)
     .select();
 
@@ -47,6 +50,7 @@ export const updateProfile = async (req: AuthenticatedRequest, res: Response) =>
 
   res.status(200).json({ message: 'Profile updated', user: data?.[0] });
 };
+
 export const updateStatus = async (req: AuthenticatedRequest, res: Response) => {
   const email = req.userEmail;
   if (!email) {
@@ -57,14 +61,16 @@ export const updateStatus = async (req: AuthenticatedRequest, res: Response) => 
   if (!status) {
     return res.status(400).json({ error: 'Status is required' });
   }
+
   const { data, error } = await supabase
-    .from('users')
-    .update({ status })
+    .from('User') 
+    .update({ status }) 
     .eq('email', email)
     .select();
 
   if (error) {
     return res.status(500).json({ error: error.message });
   }
+
   res.status(200).json({ message: 'Status updated', user: data?.[0] });
 };
