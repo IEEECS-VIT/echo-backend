@@ -7,6 +7,8 @@ import express, { Request, Response } from 'express';
 import messages from './routes/message';
 import './client/supabase';
 import { checkBucketConnection } from './lib/storage';
+import {rateLimiter} from './middleware/rateLimiter';
+import { spamProtection } from './middleware/spamProtection';
 
 checkBucketConnection().catch(console.error);
 
@@ -20,7 +22,7 @@ app.get('/', (_req: Request, res: Response) => {
   res.send('Hello from echo-backend!');
 });
 
-app.use('/api/auth', authRoutes);
+app.use('/api/auth',rateLimiter,authRoutes);
 app.use('/api/message', messages);
 
 app.listen(PORT, () => {

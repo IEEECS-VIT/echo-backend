@@ -8,6 +8,8 @@ services:
     volumes:
       - .:/app
       - /app/node_modules
+    depends_on:
+      - redis
     environment:
       - SUPABASE_URL=${SUPABASE_URL}
       - SUPABASE_ANON_KEY=${SUPABASE_ANON_KEY}
@@ -15,3 +17,7 @@ services:
       - JWT_SECRET=${JWT_SECRET}
       - REFRESH_SECRET=${REFRESH_SECRET}
     command: npm run dev
+  redis:
+    image: redis:latest
+    ports:
+      - "6379:6379"
