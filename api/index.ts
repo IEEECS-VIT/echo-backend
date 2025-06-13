@@ -46,7 +46,7 @@ subscribeToChannel(io);
 setupVoiceSocket(io);
 
 const handler = serverless(app);
-export { handler };
+export default handler;
 
 if (process.env.NODE_ENV !== 'production') {
   const PORT = process.env.PORT || 5000;
