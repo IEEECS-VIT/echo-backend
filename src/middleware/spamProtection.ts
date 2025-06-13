@@ -7,11 +7,19 @@ const redis = new Redis({
     host:'redis',
     port: 6379,
   });
+const COOLDOWN=10;
 
 export const spamProtection = async (req: Request, res: Response, next: NextFunction):Promise<void> => {
-  const ip = req.ip
-  const actionKey = `spam:${ip}:${req.originalUrl}`;
+  let actionKey: string | undefined;
+  const user = (req as any).user;
 
+  if (!user || !user.userId) {
+    actionKey = `spam:ip:${req.ip}:${req.originalUrl}`;
+  }else{
+  actionKey = `spam:user:${user.userId}:${req.path}`;
+  }
+  
+  try{
   const isSpamming = await redis.get(actionKey); //check if same action have been performed before 
 
   if (isSpamming) {
@@ -19,7 +27,10 @@ export const spamProtection = async (req: Request, res: Response, next: NextFunc
     return
   }
 
-  await redis.set(actionKey, '1', 'EX', 10); //action key is set to expire in 10 sec
-
-  next();
-};
+  await redis.set(actionKey, '1', 'EX', COOLDOWN); //action key is set to expire in 10 sec
+  next(); 
+  }catch(err){
+    console.error("Redis error:", err);
+    res.status(500).json({ message: "Internal server error" });
+  }
+}
