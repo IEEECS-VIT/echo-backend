@@ -63,3 +63,37 @@ export const messagePostController = async (req:Request, res:Response):Promise<a
     }
 };
 
+/* note : for every get message request , we send 15 messages. */
+/* if the offset received is 0 , we send latest 15 messgages. 
+    if the offset is 1 , then we send the next 15 messages and so on */
+export const messageGetController = async (req:Request, res:Response):Promise<any>=>{
+    try{
+        const channelId:number = parseInt(req.query.channelId as string); // as string to satisfy typescript
+        const offset:number = parseInt(req.query.offset as string) || 0;
+        if(!channelId){
+            return res.status(400).json({msg:'No channelId received'});
+        }
+        /* if no offset is received , then we assume 0 as offset*/
+        /* use parseInt */
+        const from = offset * 15;
+        const to = from + 14;
+        const { data, error } = await supabase
+        .from('messages')
+        .select('*')
+        .eq('channel_id', channelId)
+        .order('timestamp', { ascending: false }) //latest messages
+        .range( from, to ); //send 15 messages
+
+        if(error){
+            console.error('Error fetching messages:', error);
+            return res.status(500).json({msg:'Server Error'});
+        }else{
+            console.log('Fetched messages:', data);
+            return res.status(200).json({data});
+        }
+    }
+    catch(e:any){
+        console.log(`Error in GET message : ${e}`);
+        return res.status(500).json({'msg':'Server Error'});
+    }
+}
