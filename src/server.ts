@@ -1,6 +1,8 @@
+import dotenv from 'dotenv';
+dotenv.config();
+
 import express, { Request, Response } from 'express';
 import serverless from 'serverless-http';
-import dotenv from 'dotenv';
 import cookieParser from 'cookie-parser';
 import cors from 'cors';
 import authRoutes from './routes/auth';
@@ -8,7 +10,6 @@ import messageRoutes from './routes/message';
 import './client/supabase';
 import { checkBucketConnection } from './lib/storage';
 
-dotenv.config();
 
 const app = express();
 app.use(express.json());

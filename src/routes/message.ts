@@ -12,6 +12,6 @@ import { messagePostController } from "../controllers/messageController";
 
 /*IMPORTANT : implement the auth middleware*/
 
-router.post('/message', upload.single('file'), messagePostController);
+router.post('/upload', upload.single('file'), messagePostController);
 
 export default router;

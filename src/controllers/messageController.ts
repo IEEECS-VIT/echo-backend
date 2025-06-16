@@ -1,6 +1,3 @@
-import dotenv from 'dotenv';
-dotenv.config();
-
 import type { Request, Response } from "express";
 import { supabase } from '../client/supabase';
 import {v4} from 'uuid';
@@ -24,7 +21,7 @@ export const messagePostController = async (req:Request, res:Response):Promise<a
             const fileName = `${id}.${fileExt}`;//filename to store as , should not conflict.
 
             const {data, error: uploadError}= await supabase.storage
-                .from(process.env.SUPABASE_BUCKET!)
+                .from('attachments')
                 .upload(fileName, req.file.buffer, {
                 contentType: req.file.mimetype,
                 upsert: true,
@@ -41,7 +38,7 @@ export const messagePostController = async (req:Request, res:Response):Promise<a
         }
 
         //store all data in "Message" table
-        const { error: insertError } = await supabase.from('Message').insert({
+        const { error: insertError } = await supabase.from('messages').insert({
             id,
             content,
             mediaUrl,
