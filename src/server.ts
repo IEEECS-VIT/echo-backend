@@ -1,4 +1,6 @@
 import express, { Request, Response } from 'express';
+import messages from './routes/message';
+import profileRoutes from './routes/profile';
 import serverless from 'serverless-http';
 import dotenv from 'dotenv';
 import cookieParser from 'cookie-parser';
@@ -22,6 +24,9 @@ app.get('/', (_req: Request, res: Response) => {
   res.send('Hello from echo-backend!');
 });
 
+app.use('/api/auth', authRoutes);
+app.use('/api/message', messages);
+app.use('/api/profiles', profileRoutes);
 checkBucketConnection().catch(console.error);
 
 const handler = serverless(app);
