@@ -16,15 +16,16 @@ export const updateProfile = async (req: AuthenticatedRequest, res: Response) =>
 
   const { username, bio } = req.body;
   const avatarFile = req.file;
-
-  let avatarUrl: string | undefined;
-
+  // Creating a variable to dynamically update what the user wants to update
+  const updateData: { [key: string]: string | undefined } = {};
+  if (username) updateData.username = username;
+  if (bio) updateData.bio = bio;
   if (avatarFile) {
     const ext = path.extname(avatarFile.originalname);
     const fileName = `${uuidv4()}${ext}`;
 
     const { error: uploadError } = await supabase.storage
-      .from('avatars') 
+      .from('avatars')
       .upload(fileName, avatarFile.buffer, {
         contentType: avatarFile.mimetype,
         upsert: true
@@ -35,12 +36,16 @@ export const updateProfile = async (req: AuthenticatedRequest, res: Response) =>
     }
 
     const { data: publicUrlData } = supabase.storage.from('avatars').getPublicUrl(fileName);
-    avatarUrl = publicUrlData?.publicUrl;
+    updateData.avatar_url = publicUrlData?.publicUrl;
+  }
+
+  if (Object.keys(updateData).length === 0) {
+    return res.status(400).json({ error: 'No fields provided for update' });
   }
 
   const { data, error } = await supabase
-    .from('User') 
-    .update({ username, bio, avatarUrl }) 
+    .from('User')
+    .update(updateData)
     .eq('email', email)
     .select();
 
@@ -63,8 +68,8 @@ export const updateStatus = async (req: AuthenticatedRequest, res: Response) => 
   }
 
   const { data, error } = await supabase
-    .from('User') 
-    .update({ status }) 
+    .from('User')
+    .update({ status })
     .eq('email', email)
     .select();
 
