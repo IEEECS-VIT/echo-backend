@@ -5,15 +5,15 @@ import {v4} from 'uuid';
 export const messagePostController = async (req:Request, res:Response):Promise<any>=>{
     
     const id = v4();
-    const {content, channelId, senderId, replyToId } = req.body;
-    if(!channelId){
+    const {content, channel_id, sender_id, reply_to } = req.body;
+    if(!channel_id){
         return res.status(400).json({'error':'No channelId received.'});
     } 
-    if(!senderId){
+    if(!sender_id){
         return res.status(400).json({'error':'No senderId received.'});
     }
 
-    let mediaUrl:string | null = null;
+    let media_url:string | null = null;
 
     try{
         if (req.file) {
@@ -34,18 +34,18 @@ export const messagePostController = async (req:Request, res:Response):Promise<a
 
             // Get public URL
             const { data: publicUrlData } = supabase.storage.from(process.env.SUPABASE_BUCKET!).getPublicUrl(fileName);
-            mediaUrl = publicUrlData.publicUrl;
+            media_url = publicUrlData.publicUrl;
         }
 
         //store all data in "Message" table
         const { error: insertError } = await supabase.from('messages').insert({
             id,
             content,
-            mediaUrl,
-            isEdited: false,
-            channelId,
-            senderId,
-            replyToId: replyToId || null,
+            media_url,
+            is_edited: false,
+            channel_id,
+            sender_id,
+            reply_to: reply_to || null,
         });
 
         if (insertError) {
@@ -65,9 +65,9 @@ export const messagePostController = async (req:Request, res:Response):Promise<a
     if the offset is 1 , then we send the next 15 messages and so on */
 export const messageGetController = async (req:Request, res:Response):Promise<any>=>{
     try{
-        const channelId:number = parseInt(req.query.channelId as string); // as string to satisfy typescript
+        const channel_id:number = parseInt(req.query.channelId as string); // as string to satisfy typescript
         const offset:number = parseInt(req.query.offset as string) || 0;
-        if(!channelId){
+        if(!channel_id){
             return res.status(400).json({msg:'No channelId received'});
         }
         /* if no offset is received , then we assume 0 as offset*/
@@ -77,7 +77,7 @@ export const messageGetController = async (req:Request, res:Response):Promise<an
         const { data, error } = await supabase
         .from('messages')
         .select('*')
-        .eq('channel_id', channelId)
+        .eq('channel_id', channel_id)
         .order('timestamp', { ascending: false }) //latest messages
         .range( from, to ); //send 15 messages
 
