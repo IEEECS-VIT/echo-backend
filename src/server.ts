@@ -6,6 +6,8 @@ import authRoutes from './routes/auth';
 import messageRoutes from './routes/message';
 import './client/supabase';
 import { checkBucketConnection } from './lib/storage';
+import {rateLimiter} from './middleware/rateLimiter';
+import { spamProtection } from './middleware/spamProtection';
 
 dotenv.config();
 
@@ -21,6 +23,9 @@ app.get('/', (_req: Request, res: Response) => {
   res.send('Hello from echo-backend!');
 });
 
+app.use('/api/auth',rateLimiter,authRoutes);
+app.use('/api/message', messages);
+app.use('/api/profiles', profileRoutes);
 checkBucketConnection().catch(console.error);
 
 const PORT = process.env.PORT || 5000;
