@@ -10,7 +10,7 @@ export interface AuthenticatedRequest extends Request {
   userEmail?: string;
 }
 
-export const authenticate = (req: Request, res: Response, next: NextFunction) => {
+export const authenticate = (req: Request, res: Response, next: NextFunction): void => {
   let token: string| undefined;
 
   const authHeader = req.headers.authorization;
@@ -22,7 +22,8 @@ export const authenticate = (req: Request, res: Response, next: NextFunction) =>
   }
   
   if (!token) {
-    return res.status(401).json({ message: 'No token provided' });
+    res.status(401).json({ message: 'No token provided' });
+    return;
   }
   
   try {
@@ -32,5 +33,6 @@ export const authenticate = (req: Request, res: Response, next: NextFunction) =>
     next();
   } catch (err) {
     res.status(403).json({ message: 'Invalid token' });
+    return;
   }
 };

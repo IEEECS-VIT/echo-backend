@@ -1,152 +1,173 @@
-# Echo Backend Setup
+# Echo Backend
 
----
+A Node.js backend API built with Express, TypeScript, and Supabase.
 
-## 📋 Prerequisites
+## Local Development
 
-Before you begin, ensure you have the following installed:
+1. Install dependencies:
+```bash
+npm install
+```
 
-* **Docker Desktop** (or Docker Engine and Docker Compose for Linux): Essential for building and running containers.
-    * [Install Docker Desktop](https://www.docker.com/products/docker-desktop/)
-* **Git**: For cloning the repository.
-    * [Install Git](https://git-scm.com/downloads)
-* **Vercel CLI** (for deployment): Install globally for deployment.
-    * ```bash
-      npm install -g vercel
-      ```
+2. Copy environment variables:
+```bash
+cp .env.example .env
+```
 
----
+3. Fill in your environment variables in `.env`
 
-## 🚀 Deployment to Vercel
+4. Start the development server:
+```bash
+npm run dev
+```
 
-### Prerequisites for Deployment
+The server will run at `http://localhost:5000`
 
-1. **Vercel Account**: Sign up at [vercel.com](https://vercel.com)
-2. **Environment Variables**: Set up your environment variables in Vercel dashboard or via CLI
+## Docker Testing
 
-### Deployment Steps
+### Prerequisites
+- Docker installed and running
+- docker-compose installed
 
-1. **Login to Vercel** (if not already logged in):
-   ```bash
-   vercel login
-   ```
+### Quick Docker Test
 
-2. **Set Environment Variables**:
-   You can set environment variables either through the Vercel dashboard or using the CLI:
-   ```bash
-   vercel env add SUPABASE_URL
-   vercel env add SUPABASE_ANON_KEY
-   vercel env add SUPABASE_SERVICE_ROLE_KEY
-   vercel env add SUPABASE_S3_ACCESS_KEY
-   vercel env add SUPABASE_S3_SECRET_KEY
-   vercel env add SUPABASE_S3_ENDPOINT
-   vercel env add FRONTEND_URL
-   ```
+1. **Test with Docker Compose** (includes Redis):
+```bash
+npm run docker:test
+```
 
-3. **Deploy to Production**:
-   ```bash
-   npm run deploy
-   ```
-   Or manually:
-   ```bash
-   vercel --prod
-   ```
+2. **Or manually with Docker Compose**:
+```bash
+npm run docker:compose
+```
 
-4. **For Development/Preview Deployments**:
-   ```bash
-   vercel
-   ```
+3. **Test with standalone Docker container**:
+```bash
+npm run docker:build
+npm run docker:run
+```
 
-### Environment Variables Required
+### Docker Commands
 
-Make sure to set these environment variables in your Vercel project:
+- `npm run docker:build` - Build Docker image
+- `npm run docker:run` - Run Docker container
+- `npm run docker:test` - Run comprehensive Docker test
+- `npm run docker:compose` - Start with docker-compose (includes Redis)
+- `npm run docker:compose:down` - Stop docker-compose services
 
-- `SUPABASE_URL`: Your Supabase project URL
-- `SUPABASE_ANON_KEY`: Your Supabase anonymous key
-- `SUPABASE_SERVICE_ROLE_KEY`: Your Supabase service role key
-- `SUPABASE_S3_ACCESS_KEY`: Your Supabase S3 access key
-- `SUPABASE_S3_SECRET_KEY`: Your Supabase S3 secret key
-- `SUPABASE_S3_ENDPOINT`: Your Supabase S3 endpoint
-- `FRONTEND_URL`: Your frontend application URL (for CORS)
+### Docker Environment Variables
+
+Make sure your `.env` file contains all necessary variables:
+- `SUPABASE_URL`
+- `SUPABASE_ANON_KEY`
+- `SUPABASE_SERVICE_ROLE_KEY`
+- `SUPABASE_S3_ACCESS_KEY`
+- `SUPABASE_S3_SECRET_KEY`
+- `SUPABASE_S3_ENDPOINT`
+- `JWT_SECRET`
+- `REFRESH_SECRET`
+- `FRONTEND_URL` (optional, defaults to http://localhost:3000)
+
+## Vercel Deployment
+
+### Prerequisites
+- Vercel CLI installed: `npm i -g vercel`
+- Vercel account
+
+### Quick Deployment
+
+1. **Deploy with automated script**:
+```bash
+npm run deploy:vercel
+```
+
+2. **Or manually**:
+```bash
+vercel login
+vercel --prod
+```
+
+### Manual Deployment Steps
+
+1. **Install Vercel CLI** (if not already installed):
+```bash
+npm i -g vercel
+```
+
+2. **Login to Vercel**:
+```bash
+vercel login
+```
+
+3. **Deploy to Vercel**:
+```bash
+vercel
+```
+
+4. **Set Environment Variables**:
+After deployment, you'll need to set your environment variables in the Vercel dashboard:
+- Go to your project in the Vercel dashboard
+- Navigate to Settings > Environment Variables
+- Add all the variables from your `.env` file:
+  - `SUPABASE_URL`
+  - `SUPABASE_ANON_KEY`
+  - `SUPABASE_SERVICE_ROLE_KEY`
+  - `SUPABASE_S3_ACCESS_KEY`
+  - `SUPABASE_S3_SECRET_KEY`
+  - `SUPABASE_S3_ENDPOINT`
+  - `JWT_SECRET`
+  - `REFRESH_SECRET`
+  - `FRONTEND_URL` (your frontend URL)
+
+5. **Redeploy with environment variables**:
+```bash
+vercel --prod
+```
 
 ### API Endpoints
 
-After deployment, your API will be available at:
-- Base URL: `https://your-project-name.vercel.app`
-- Health Check: `GET /`
-- Auth Routes: `POST /api/auth/register`, `POST /api/auth/login`, etc.
-- Message Routes: `GET /api/message`, `POST /api/message`, etc.
+Your API will be available at:
+- Production: `https://your-project-name.vercel.app`
+- Preview: `https://your-project-name-git-branch.vercel.app`
 
----
+### Environment Variables for Production
 
-## 🛠️ Setup Instructions
+Make sure to set these in your Vercel dashboard:
+- `NODE_ENV=production`
+- `FRONTEND_URL` (your frontend domain)
 
-Follow these steps to get the Echo Backend running with Docker:
+## API Routes
 
-1.  **Clone the Repository**
+- `GET /` - Health check
+- `POST /api/auth/*` - Authentication routes
+- `POST /api/message/*` - Message routes  
+- `POST /api/profile/*` - Profile routes
 
-    ```bash
-    git clone https://github.com/IEEECS-VIT/echo-backend
-    cd echo-backend
-    ```
+## Build Commands
 
-2.  **Run the Application with Docker Compose (Recommended for Development)**
+- `npm run build` - Build TypeScript to JavaScript
+- `npm start` - Start production server
+- `npm run dev` - Start development server
 
-    This is the most convenient way to get started. Docker Compose will build the Docker image (if it doesn't exist or if changes are detected in the `Dockerfile` or project dependencies) and start the container.
+## Docker Files
 
-    ```bash
-    docker-compose up --build
-    ```
-    * The `--build` flag ensures that the Docker image is rebuilt if necessary. You can omit it on subsequent runs if you haven't changed your `Dockerfile` or `package.json`.
-    * The application will run in the foreground, displaying logs directly in your terminal. To run in detached mode (background), add the `-d` flag: `docker-compose up -d --build`.
+- `Dockerfile` - Development Docker configuration
+- `Dockerfile.prod` - Production Docker configuration with multi-stage build
+- `docker-compose.yml` - Local development with Redis
+- `.dockerignore` - Files excluded from Docker builds
 
-### Alternative: Build and Run Manually (Docker CLI)
+## Troubleshooting
 
-If you prefer to manage the image and container separately using the Docker CLI:
+### Docker Issues
+- Make sure Docker is running
+- Check if ports 5000 and 6379 are available
+- Verify your `.env` file exists and has all required variables
 
-1.  **Build the Docker Image**
+### Vercel Issues
+- Ensure you're logged in to Vercel CLI
+- Check that all environment variables are set in Vercel dashboard
+- Verify the build process works locally before deploying
 
-    ```bash
-    docker build -t echo-backend .
-    ```
-    This command reads the `Dockerfile` in the current directory (`.`) and builds an image tagged `echo-backend`. This step includes installing Node.js dependencies and building TypeScript code *inside the Docker image*.
-
-2.  **Run the Docker Container**
-
-    ```bash
-    docker run -d -p 5000:5000 echo-backend
-    ```
-    * The `-d` flag runs the container in "detached" mode (in the background).
-    * The `-p 5000:5000` flag maps port `5000` from the container to port `5000` on your host machine, making the application accessible from your browser or API client.
-
----
-
-## ✅ Verifying the Setup
-
-* Once the container is running, the Echo Backend application should be accessible via HTTP requests on **port 5000**.
-* You can check running Docker containers with `docker ps`.
-
-## 🛑 Stopping the Application
-
-* **If using `docker-compose up` (without `-d`):** Press `Ctrl+C` in the terminal where Docker Compose is running.
-* **If using `docker-compose up -d`:**
-    ```bash
-    docker-compose down
-    ```
-* **If using `docker run -d`:**
-    1.  Find the container ID:
-        ```bash
-        docker ps
-        ```
-    2.  Stop the container:
-        ```bash
-        docker stop [container_id_or_name]
-        ```
-
----
-
-## 📝 Notes
-
-* **No local Node.js installation is required for this setup.** All Node.js dependencies and the TypeScript build process are handled within the Docker container.
-* The application listens on **port 5000** inside the container. Ensure this port is correctly mapped to a free port on your host machine.
-* For advanced configurations or debugging, you may inspect the `Dockerfile` and `docker-compose.yml` files in the repository.
+### Build Issues
+- Run `npm run build` to check for TypeScript errors
+- Ensure all dependencies are installed with `npm install`

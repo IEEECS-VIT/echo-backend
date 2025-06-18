@@ -6,6 +6,7 @@ import serverless from 'serverless-http';
 import authRoutes from './routes/auth';
 import messageRoutes from './routes/message';
 import profileRoutes from './routes/profile';
+import { rateLimiter } from './middleware/rateLimiter';
 
 dotenv.config();
 
@@ -20,7 +21,7 @@ app.use(cors({
 }));
 
 
-app.use('/api/auth', authRoutes);
+app.use('/api/auth', authRoutes, rateLimiter);
 app.use('/api/message', messageRoutes);
 app.use('/api/profile', profileRoutes);
 

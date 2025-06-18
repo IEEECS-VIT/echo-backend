@@ -1,14 +1,21 @@
-FROM node:22
+FROM node:18-alpine
 
 WORKDIR /app
 
+# Copy package files
 COPY package*.json ./
-RUN npm install
 
+# Install dependencies
+RUN npm install --production
+
+# Copy source code
 COPY . .
 
-RUN npx tsc
+# Build the application
+RUN npm run build
 
-EXPOSE 3000
+# Expose port
+EXPOSE 5000
 
-CMD ["node", "dist/server.js"]
+# Start the application
+CMD ["npm", "start"]
