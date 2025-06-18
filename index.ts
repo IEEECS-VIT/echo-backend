@@ -3,10 +3,10 @@ import dotenv from 'dotenv';
 import cookieParser from 'cookie-parser';
 import cors from 'cors';
 import serverless from 'serverless-http';
-import authRoutes from './routes/auth';
-import messageRoutes from './routes/message';
-import profileRoutes from './routes/profile';
-import { rateLimiter } from './middleware/rateLimiter';
+import authRoutes from './api/routes/auth';
+import messageRoutes from './api/routes/message';
+import profileRoutes from './api/routes/profile';
+import { rateLimiter } from './api/middleware/rateLimiter';
 
 dotenv.config();
 
@@ -16,15 +16,16 @@ const app = express();
 app.use(express.json());
 app.use(cookieParser());
 app.use(cors({
-  origin: '*',
-  credentials: false
+  origin: process.env.FRONTEND_URL || 'http://localhost:3000',
+  credentials: true
 }));
 
-
-app.use('/api/auth', authRoutes, rateLimiter);
+// Routes with middleware
+app.use('/api/auth', rateLimiter, authRoutes);
 app.use('/api/message', messageRoutes);
 app.use('/api/profile', profileRoutes);
 
+// Health check endpoint
 app.get('/', (_req: Request, res: Response) => {
   res.json({ message: 'Hello from echo-backend!', status: 'healthy' });
 });
