@@ -1,7 +1,4 @@
 import express, { Request, Response } from 'express';
-import messages from './routes/message';
-import profileRoutes from './routes/profile';
-import serverless from 'serverless-http';
 import dotenv from 'dotenv';
 import cookieParser from 'cookie-parser';
 import cors from 'cors';
@@ -31,12 +28,7 @@ app.use('/api/message', messages);
 app.use('/api/profiles', profileRoutes);
 checkBucketConnection().catch(console.error);
 
-const handler = serverless(app);
-export { handler };
-
-if (process.env.NODE_ENV !== 'production') {
-  const PORT = process.env.PORT || 5000;
-  app.listen(PORT, () => {
-    console.log(`✅ Local server running at http://localhost:${PORT}`);
-  });
-}
+const PORT = process.env.PORT || 5000;
+app.listen(PORT, () => {
+  console.log(`✅ Local server running at http://localhost:${PORT}`);
+});
