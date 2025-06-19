@@ -1,18 +1,21 @@
-# Base image
-FROM node:22
+FROM node:18-alpine
 
-# Set working directory
 WORKDIR /app
 
-# Install dependencies
+# Copy package files
 COPY package*.json ./
-RUN npm install
 
-# Copy source
+# Install dependencies
+RUN npm install --production
+
+# Copy source code
 COPY . .
 
-# Build TypeScript
+# Build the application
 RUN npm run build
 
-# Start the app
+# Expose port
+EXPOSE 5000
+
+# Start the application
 CMD ["npm", "start"]
