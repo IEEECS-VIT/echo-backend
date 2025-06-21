@@ -87,19 +87,30 @@ export const messagePostController = async (req:Request, res:Response):Promise<a
     if the offset is 1 , then we send the next 15 messages and so on */
 export const messageGetController = async (req:Request, res:Response):Promise<any>=>{
     try{
-        const channel_id:number = parseInt(req.query.channelId as string); // as string to satisfy typescript
+        const channel_id:string = req.query.channel_id as string;
         const offset:number = parseInt(req.query.offset as string) || 0;
+        /* if no offset is received , then we assume 0 as offset*/
+        const is_dm:boolean = (req.query.is_dm === 'true');
+        
         if(!channel_id){
             return res.status(400).json({msg:'No channelId received'});
         }
-        /* if no offset is received , then we assume 0 as offset*/
-        /* use parseInt */
+        if(offset < 0){
+            return res.status(400).json({msg:'offset cannot be negative'});
+        }
+
         const from = offset * 15;
         const to = from + 14;
+
+        //get appropriate table and column name for the channel/thread.
+        const table:string = (is_dm)?'dm_messages':'messages';
+        const channel:string = (is_dm)?'thread_id':'channel_id';
+
+        /* fetch data*/
         const { data, error } = await supabase
-        .from('messages')
+        .from(table)
         .select('*')
-        .eq('channel_id', channel_id)
+        .eq(channel, channel_id)
         .order('timestamp', { ascending: false }) //latest messages
         .range( from, to ); //send 15 messages
 
