@@ -5,6 +5,9 @@ import cors from 'cors';
 import authRoutes from './routes/auth';
 import messageRoutes from './routes/message';
 import profileRoutes from './routes/profile';
+import channelroutes from './routes/channel';
+import serverroutes from './routes/servers';
+import roleroutes from './routes/profile';
 import { rateLimiter } from './middleware/rateLimiter';
 
 dotenv.config();
@@ -23,7 +26,9 @@ app.use(cors({
 app.use('/api/auth', rateLimiter, authRoutes);
 app.use('/api/message', messageRoutes);
 app.use('/api/profile', profileRoutes);
-
+app.use('/api/newserver',serverroutes);
+app.use('/api/user',channelroutes);
+app.use('api/user/roles',roleroutes);
 // Health check endpoint
 app.get('/', (_req: Request, res: Response) => {
   res.json({ message: 'Hello from echo-backend!', status: 'healthy' });
