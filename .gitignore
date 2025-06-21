@@ -39,3 +39,4 @@ tmp/
 logs/
 *.log
 .vercel
+scripts/
