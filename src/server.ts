@@ -7,7 +7,7 @@ import messageRoutes from './routes/message';
 import profileRoutes from './routes/profile';
 import channelroutes from './routes/channel';
 import serverroutes from './routes/servers';
-import roleroutes from './routes/profile';
+import roleroutes from './routes/roles';
 import { rateLimiter } from './middleware/rateLimiter';
 
 dotenv.config();
@@ -28,13 +28,13 @@ app.use('/api/message', messageRoutes);
 app.use('/api/profile', profileRoutes);
 app.use('/api/newserver',serverroutes);
 app.use('/api/user',channelroutes);
-app.use('api/user/roles',roleroutes);
+app.use('/api/roles',roleroutes);
 // Health check endpoint
 app.get('/', (_req: Request, res: Response) => {
-  res.json({ message: 'Hello from echo-backend!', status: 'healthy' });
+  res.json({ message: 'Hello from echo-backend! helolllolol', status: 'healthy' });
 });
 
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
-  console.log(`✅ Server running on port ${PORT}`);
+  console.log(`✅ Server running on ahhhhhhhhh port ${PORT}`);
 }); 

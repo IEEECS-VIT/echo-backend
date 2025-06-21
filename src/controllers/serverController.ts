@@ -11,7 +11,7 @@ const app = express();
 export const screation= async (req:AuthenticatedRequest, res: Response ) => {
   const { name } = req.body;   
   const user =req.user;                               
-  const user_Id = user?.userId;                                        
+  const email_Id=user?.email;                                     
 
 const file = req.file;
 if(!file){
@@ -39,8 +39,29 @@ const { data: urlData } = supabase
 .getPublicUrl(filePath);
 const icon_url = urlData.publicUrl;
 
+// console.log(email_Id);
 const serverId = uuidv4(); 
   try {
+
+    if (!email_Id) {
+        res.status(400).json({ error: 'owner_email is required in the request body.' });
+        return;
+    }
+
+    const { data: userData, error: userError } = await supabase
+        .from('users')
+        .select('id')
+        .eq('email', email_Id)
+        .single();
+
+    if (userError || !userData) {
+        res.status(404).json({ error: `User with email ${email_Id} not found.` });
+        return;
+    }
+
+    const user_Id = userData.id;
+    console.log(user_Id)
+    console.log(email_Id)
     const {data: server, error: serverError} = await supabase
     .from('servers')
     .insert([
@@ -109,3 +130,6 @@ const serverId = uuidv4();
     return;
   }
 };
+
+/*0220869c-233a-4545-ba30-736f48807cd1 
+265e6a14-73de-4852-bc70-a81855cdf9a8*/

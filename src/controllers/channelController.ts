@@ -7,9 +7,26 @@ const app = express();
 export const cc=async (req:AuthenticatedRequest, res: Response) => {
   const { name, type, is_private} = req.body;
   const { server_id } = req.params;
-  const user_id = req.user?.userId;
+  const email_Id=req.user?.email;
 
    try {
+        if (!email_Id) {
+        res.status(400).json({ error: 'owner_email is required in the request body.' });
+        return;
+    }
+
+    const { data: userData, error: userError } = await supabase
+        .from('users')
+        .select('id')
+        .eq('email', email_Id)
+        .single();
+
+    if (userError || !userData) {
+        res.status(404).json({ error: `User with email ${email_Id} not found.` });
+        return;
+    }
+
+    const user_id = userData.id;
 
     const { data: membership, error: membershipError } = await supabase
       .from('server_members')

@@ -12,99 +12,80 @@ type Role = {
   server_id: string
 }; 
 
-//To feftch the Role Details
 export const getRoleDetailsWithPermissions = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
-  const { username } = req.body;
-  const {serverId} = req.params;
+    const { username } = req.body;
+    const { server_id } = req.params;
 
-  if (!serverId){
-    res.status(400).json({ error: 'ServerId required.'});
-    return;
-  }
-
-  if (!username) {
-    res.status(400).json({ error: 'Username is required.' });
-    return;
-  }
-  try {
-
-const {data: serveruser, error: serverError} = await supabase
-.from('server_members')
-.select('user_id')
-.eq('user_id',req.body.sub)
-.eq('server_id',serverId)
-.single()
-
-if(serverError || !serveruser){
-  res.status(404).json({error:'No user on the given server.'})
-  return;
-}
-
-const { data: userData, error: userDataError } = await supabase
-      .from('users')
-      .select('id')
-      .eq('username', username)
-      .single();
-
-    console.log(typeof(userData?.id))
-      
-    if (userDataError || !userData) {
-      res.status(404).json({ error: 'There is no User.' });
-      return;
+    if (!server_id) {
+        res.status(400).json({ error: 'ServerId is required.' });
+        return;
     }
-    const userId = userData.id;
-
-
-
-const { data: users, error: rolesError } = await supabase
-      .from('user_roles')
-      .select(`
-        user_id,
-        roles (
-          id,
-          name,
-          color,
-          position,
-          server_id
-        )
-      `)
-      .eq('user_id', userId);
-              // Here we equate user_roles.user_id with the ID we found
-
-    if (rolesError) {
-            console.error("Supabase error fetching roles:", rolesError);
-            res.status(404).json({ error: 'User has no roles assigned.' });
-      return;
+    if (!username) {
+        res.status(400).json({ error: 'Username is required.' });
+        return;
     }
 
-    if (!users || users.length === 0) {
-          res.status(404).json({ error: 'User is not assigned any roles.' });
-          return;
+    try {
+        // --- DEBUG LOG 2: Check if the user lookup is working ---
+        console.log(`Searching for user with username: "${username}"`);
+        const { data: targetUserData, error: userError } = await supabase
+            .from('users')
+            .select('id')
+            .eq('username', username)
+            .single();
+
+        if (userError) {
+            console.error("Error finding user:", userError);
         }
-    const user= users[0]; 
-    console.log('Data from Supabase:', JSON.stringify(user, null, 2));
-            if (!user.roles || user.roles.length === 0) {
-            res.status(404).json({ error: 'Role details not found for this user.' });
+        console.log("User lookup result:", targetUserData);
+
+
+        if (userError || !targetUserData) {
+            res.status(404).json({ error: `User with username "${username}" not found.` });
+            return;
+        }
+        const targetUserId = targetUserData.id;
+
+        console.log(`Searching for roles for user ID: "${targetUserId}" on server ID: "${server_id}"`);
+        const { data: userRolesOnServer, error: rolesError } = await supabase
+            .from('user_roles')
+            .select(`
+                role_id,
+                roles!inner(
+                    id,
+                    name,
+                    color,
+                    position,
+                    server_id,
+                    permissions(*)
+                )
+            `)
+            .eq('user_id', targetUserId)
+            .eq('roles.server_id', server_id);
+
+        if (rolesError) {
+            console.error("Error fetching roles:", rolesError);
+        }
+
+
+
+        if (rolesError) {
+            throw new Error(`Error fetching roles: ${rolesError.message}`);
+        }
+
+        if (!userRolesOnServer || userRolesOnServer.length === 0) {
+            res.status(404).json({ error: `User "${username}" has no roles on this server.` });
             return;
         }
 
-    const role = user.roles as unknown as Role;
-    const permissions = await getPermissionsByRoleId(role.id);
+        console.log("--- Successfully found roles! Sending response. ---");
+        res.status(200).json(userRolesOnServer);
 
-        res.json({
-      role: {
-        id: role.id,
-        name: role.name,
-        color: role.color,
-        position: role.position,
-      },
-      permissions,
-    });
-  } catch (error) {
-    console.error('Error:', error);
-    res.status(500).json({ error: 'Internal server error.' });
-    return;
-  }
+    } catch (error) {
+        const err = error as Error;
+        console.error('FINAL CATCH BLOCK - Error in getRoleDetailsWithPermissions:', err.message);
+        res.status(500).json({ error: 'Internal server error' });
+    }
 };
 
 export interface RolePermissions{
@@ -117,6 +98,7 @@ export interface RolePermissions{
 export const addRole = async (req:AuthenticatedRequest, res: Response): Promise<void> => {
 
     const serverId = req.params.server_id
+    const email_Id=req.user?.email;
 
     const { name, permissions, color } = req.body as {
       name: string;
@@ -130,6 +112,23 @@ export const addRole = async (req:AuthenticatedRequest, res: Response): Promise<
     }
 
     try {
+          if (!email_Id) {
+        res.status(400).json({ error: 'owner_email is required in the request body.' });
+        return;
+    }
+
+    const { data: userData, error: userError } = await supabase
+        .from('users')
+        .select('id')
+        .eq('email', email_Id)
+        .single();
+
+    if (userError || !userData) {
+        res.status(404).json({ error: `User with email ${email_Id} not found.` });
+        return;
+    }
+
+    const user_Id = userData.id;
 
           // Checking for existing role with the same name
     const { data: existingRole, error: checkError } = await supabase
@@ -207,23 +206,9 @@ export const addRole = async (req:AuthenticatedRequest, res: Response): Promise<
       throw new Error(`Database error: ${insertpError.message}`);
     }
 
-    const {data:URoles, error: URolesinsertError} = await supabase
-      .from('user_roles')
-      .insert({
-        user_id:req.user?.userId,
-        role_id:RoleId
-      })
-      .select()
-      .single();
-
-    if (URolesinsertError) {
-      throw new Error(`Database error: ${URolesinsertError.message}`);
-    }
-
     const result={
       data,
       Perms,
-      URoles
     }
 
     res.status(201).json(result);
@@ -239,13 +224,30 @@ export const editRole = async(req:AuthenticatedRequest, res:Response): Promise<v
 
     const serverId= req.params.server_id
     const RoleId=req.params.role_id
-
+    const email_Id=req.user?.email;
     const{new_name,new_color}=req.body as{
       new_name?:string;
       new_color?:string;
     };
 
     try{
+          if (!email_Id) {
+        res.status(400).json({ error: 'owner_email is required in the request body.' });
+        return;
+    }
+
+    const { data: userData, error: userError } = await supabase
+        .from('users')
+        .select('id')
+        .eq('email', email_Id)
+        .single();
+
+    if (userError || !userData) {
+        res.status(404).json({ error: `User with email ${email_Id} not found.` });
+        return;
+    }
+
+    const user_Id = userData.id;
             //Verify permission 
     const { data: userRoles, error: permissionError } = await supabase
       .from('user_roles')
@@ -257,7 +259,7 @@ export const editRole = async(req:AuthenticatedRequest, res:Response): Promise<v
             )
           )
         `)
-      .eq('user_id', req.user?.userId)
+      .eq('user_id',user_Id )
       .eq('roles.server_id', serverId);
 
       if (permissionError) {
@@ -317,49 +319,69 @@ export const editRole = async(req:AuthenticatedRequest, res:Response): Promise<v
     
 }
 
-export const assignRole = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
-    const { serverId } = req.params;
-    const { userId: targetUserId, role_name } = req.body as {
-        userId: string;
-        role_name: string;
-    };
+export const assignRole = async (
+    req: AuthenticatedRequest, res: Response ): Promise<void> => {
 
+    const { server_id } = req.params;
+    const { userId: targetUserId, role_name } = req.body;
+    const requestingEmailId = req.user?.email; // Get the ID of the user performing the action
+
+    // --- Input Validation ---
+    if (!requestingEmailId) {
+        res.status(401).json({ error: 'Authentication failed. User Email not found in token.' });
+        return;
+    }
     if (!targetUserId || !role_name) {
         res.status(400).json({ error: 'User ID and role name are required in the request body.' });
         return;
     }
 
     try {
+        // --- Step 1: Verify the user making the request has permission ---
+    const { data: userData, error: userError } = await supabase
+        .from('users')
+        .select('id')
+        .eq('email', requestingEmailId)
+        .single();
 
-        // roles table.
-        const { data: userRolesOnServer, error: rolesError } = await supabase
-            .from('user_roles')
-            .select(`
+    if (userError || !userData) {
+        res.status(404).json({ error: `User with email ${requestingEmailId} not found.` });
+        return;
+    }
+
+    const requestingUserId = userData.id;
+    console.log(requestingUserId)
+    console.log(server_id)
+//Get all roles for the requesting
+    const { data: requesterRoles, error: rolesError } = await supabase
+      .from('user_roles')
+        .select(`
                 role_id,
-                roles!inner(server_id)
+                roles!inner(server_id,
+                name)
             `)
-            .eq('user_id', req.user?.userId)
-            .eq('roles.server_id', serverId);
+        .eq('user_id', requestingUserId)
+        .eq('roles.server_id', server_id);
 
         if (rolesError) {
-            throw new Error(`Permission check failed at roles lookup: ${rolesError.message}`);
+            throw new Error(`Permission check (Step 1a) failed: ${rolesError.message}`);
         }
-        if (!userRolesOnServer || userRolesOnServer.length === 0) {
+        if (!requesterRoles || requesterRoles.length === 0) {
             res.status(403).json({ error: 'You do not have any roles on this server.' });
             return;
         }
 
-//permissions table
-        const roleIds = userRolesOnServer.map(r => r.role_id);
+        //From the roles found, check 'can_manage_server' permission.
+        const roleIds = requesterRoles.map(r => r.role_id);
         const { data: permissions, error: permError } = await supabase
             .from('permissions')
             .select('can_manage_server')
             .in('role_id', roleIds)
             .eq('can_manage_server', true)
-            .limit(1);
+            .limit(1); 
 
         if (permError) {
-            throw new Error(`Permission check failed at permissions lookup: ${permError.message}`);
+            throw new Error(`Permission check (Step 1b) failed: ${permError.message}`);
         }
 
         const hasPermission = permissions && permissions.length > 0;
@@ -368,36 +390,35 @@ export const assignRole = async (req: AuthenticatedRequest, res: Response): Prom
             res.status(403).json({ error: 'You do not have permission to assign roles on this server.' });
             return;
         }
-        // --- Step 2: Find the role to be assigned (case-insensitive) ---
+
+        // Find role ID from the role_name
         const { data: roleToAssign, error: findRoleError } = await supabase
             .from('roles')
             .select('id')
-            .eq('server_id', serverId)
+            .eq('server_id', server_id)
             .ilike('name', role_name) 
             .single();
-
-          console.log(roleToAssign);          
 
         if (findRoleError || !roleToAssign) {
             res.status(404).json({ error: `Role with name "${role_name}" not found on this server.` });
             return;
         }
 
-        // --- Step 3: Verify the target user is a member of the server ---
+        // Verify the target user is actually a member of the server
         const { data: serverMember, error: memberCheckError } = await supabase
             .from('server_members')
             .select('user_id')
-            .eq('server_id', serverId)
+            .eq('server_id', server_id)
             .eq('user_id', targetUserId)
             .single();
 
         if (memberCheckError || !serverMember) {
-            res.status(404).json({ error: 'The specified user is not a member of this server.' });
+            res.status(404).json({ error: 'The user to be assigned a role is not a member of this server.' });
             return;
         }
 
-        // --- Step 4: Assign the role to the user ---
-        const { data: assignedRole, error: assignError } = await supabase
+        //Assign the role to the target user 
+        const { data: assignedRoleData, error: assignError } = await supabase
             .from('user_roles')
             .upsert({
                 user_id: targetUserId,
@@ -409,16 +430,15 @@ export const assignRole = async (req: AuthenticatedRequest, res: Response): Prom
             throw new Error(`Failed to assign role: ${assignError.message}`);
         }
 
-        // --- Success Response ---
+        // Success Response
         res.status(200).json({
-            message: `Successfully assigned role "${role_name}" to user.`,
-            data: assignedRole,
+            message: `Successfully assigned role "${role_name}" to the user.`,
+            data: assignedRoleData,
         });
 
     } catch (error) {
         const err = error as Error;
         console.error('Error in assignRole controller:', err.message);
-        res.status(500).json({ error: 'Internal server error.', details: err.message });
+        res.status(500).json({ error: 'An unexpected internal server error occurred.' });
     }
-  
-  }
+};
