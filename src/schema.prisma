@@ -156,3 +156,11 @@ model Setting {
   privacyMode         String   @default("friends_only")
   user                User     @relation(fields: [userId], references: [id])
 }
+
+model Contact {
+  id        String   @id @default(cuid())
+  name      String
+  email     String
+  message   String
+  createdAt DateTime @default(now())
+}

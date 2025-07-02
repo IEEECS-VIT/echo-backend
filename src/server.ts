@@ -12,12 +12,15 @@ import channelroutes from './routes/channel';
 import serverroutes from './routes/servers';
 import roleroutes from './routes/roles';
 import { rateLimiter } from './middleware/rateLimiter';
+import contactRoutes from './routes/contact';
+
 
 
 const app = express();
 
 // Middleware
 app.use(express.json());
+app.use('/api/contact', contactRoutes);
 app.use(cookieParser());
 app.use(cors({
   origin: true,
