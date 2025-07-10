@@ -39,7 +39,6 @@ const { data: urlData } = supabase
 .getPublicUrl(filePath);
 const icon_url = urlData.publicUrl;
 
-// console.log(email_Id);
 const serverId = uuidv4(); 
   try {
 
@@ -51,7 +50,7 @@ const serverId = uuidv4();
     const { data: userData, error: userError } = await supabase
         .from('users')
         .select('id')
-        .eq('email', email_Id)
+        .ilike('email', email_Id)
         .single();
 
     if (userError || !userData) {
@@ -80,7 +79,6 @@ const serverId = uuidv4();
       throw new Error(serverError?.message || 'Server creation failed')
     }
     
-
     const { error: memberError } = await supabase
     .from('server_members')
     .insert([
@@ -112,6 +110,52 @@ const serverId = uuidv4();
     throw new Error(channelError.message);
   }
 
+   const { data: ownerRole, error: roleError } = await supabase
+    .from('roles')
+    .insert(
+    [  {
+        server_id: serverId,
+        name: 'Owner',
+        color: '#FFD700', // Gold color for owner
+        position: 0 // Highest position
+      }
+    ])
+    .select()
+    .single();
+
+    if (roleError || !ownerRole) {
+      throw new Error(`Failed to create owner role: ${roleError?.message}`);
+      }
+
+  // 4b: Create the permissions for that role
+  const { error: permError } = await supabase
+      .from('permissions')
+      .insert({
+          role_id: ownerRole.id,
+          can_manage_server: true,
+          can_kick_members: true,
+          can_manage_channels: true,
+          can_send_messages: true,
+          can_connect_voice: true
+            });
+
+  if (permError) {
+        throw new Error(`Failed to set permissions for owner role: ${permError.message}`);
+      }
+
+    // 4c: Assign the new "Owner" role to the user who created the server
+  const { error: userRoleError } = await supabase
+      .from('user_roles')
+      .insert({
+          user_id: user_Id,
+          role_id: ownerRole.id
+            });
+
+  if (userRoleError) {
+      throw new Error(`Failed to assign owner role to user: ${userRoleError.message}`);
+      }
+
+
 
    const { data: fullServer } = await supabase
     .from('servers')
@@ -131,5 +175,31 @@ const serverId = uuidv4();
   }
 };
 
-/*0220869c-233a-4545-ba30-736f48807cd1 
-265e6a14-73de-4852-bc70-a81855cdf9a8*/
+export const getServers = async (req: Request, res: Response): Promise<void> => {
+    try {
+        // 'servers' table records 
+        const { data: servers, error } = await supabase
+            .from('servers')
+            .select('name,icon_url,id'
+            );
+
+        if (error) {
+            //Supabase returns an error
+            throw new Error(`Database error: ${error.message}`);
+        }
+
+        // no server exist
+        if (!servers || servers.length === 0) {
+            res.status(200).json([]);
+            return;
+        }
+
+        //Success.
+        res.status(200).json(servers);
+
+    } catch (error) {
+        const err = error as Error;
+        console.error('Error in getServers controller:', err.message);
+        res.status(500).json({ error: 'Internal server error.', details: err.message });
+    }
+};
