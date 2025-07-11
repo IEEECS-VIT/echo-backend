@@ -1,4 +1,5 @@
 import type { Request, Response } from "express";
+import { AuthenticatedRequest } from "../middleware/authMiddleware";
 import { supabase } from '../client/supabase';
 import {v4} from 'uuid';
 
@@ -127,3 +128,70 @@ export const messageGetController = async (req:Request, res:Response):Promise<an
         return res.status(500).json({'msg':'Server Error'});
     }
 }
+
+
+// Define interfaces for type safety and clarity
+interface Profile {
+    id: string;
+    username: string;
+    avatar_url: string;
+}
+
+interface LastMessage {
+    content: string;
+    created_at: string;
+    sender_id: string;
+}
+
+interface DmThread {
+    id: string;
+    otherUser: Profile;
+    lastMessage: LastMessage | null;
+}
+
+/**
+ * Fetches ALL messages received by a user across ALL their DM threads.
+ *
+ * This function is useful for features like a global inbox or notification center.
+ */
+export const getDmMessages = async (req: Request, res: Response): Promise<void> => {
+    try {
+        const { userId } = req.params;
+        if (!userId) {
+            res.status(400).json({ error: 'User ID is required in the URL.' });
+            return 
+        }
+
+        // This query starts from the `dm_messages` table and uses a join to filter
+        // based on the threads the user is a member of.
+        const { data: messages, error } = await supabase
+            .from('dm_messages')
+            .select(`
+                id,
+                content,
+                media_url,
+                timestamp,
+                sender_id,
+                dm_threads!inner ( user1_id, user2_id )
+            `)
+            // CRITICAL 1: Only get messages where the sender is NOT the current user.
+            .not('sender_id', 'eq', userId)
+            // CRITICAL 2: Only look in threads where the current user is either user1 or user2.
+            .or(`user1_id.eq.${userId},user2_id.eq.${userId}`, { foreignTable: 'dm_threads' })
+            .order('timestamp', { ascending: false }); // Order by newest first
+
+        if (error) {
+            console.error('Error fetching all received DMs:', error);
+            res.status(500).json({ error: 'Could not fetch received DMs.' });
+            return 
+        }
+
+        res.status(200).json(messages || []);
+        return 
+
+    } catch (err) {
+        console.error('Server error in getAllReceivedDmMessages:', err);
+        res.status(500).json({ error: 'Server error.' });
+        return 
+    }
+};
