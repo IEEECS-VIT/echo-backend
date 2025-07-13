@@ -6,6 +6,6 @@ const router = express.Router();
 const upload = multer();
 
 router.post('/create/',authenticate,upload.single('icon'),screation);
-router.post('/getServers/',authenticate,getServers);
+router.get('/getServers/',authenticate,getServers);
 
 export default router;
