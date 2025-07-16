@@ -6,7 +6,7 @@ import multer from 'multer';
 const storage = multer.memoryStorage();
 const upload = multer({ storage }); 
 
-import { messagePostController, messageGetController } from "../controllers/messageController";
+import { messagePostController, messageGetController, getDmMessages} from "../controllers/messageController";
 
 /*IMPORTANT : change the REST route below to the socket architecture as needed */
 
@@ -14,5 +14,6 @@ import { messagePostController, messageGetController } from "../controllers/mess
 
 router.post('/upload', upload.single('file'), messagePostController);
 router.get('/fetch', messageGetController);
+router.get('/:userId/getDms',getDmMessages);
 
 export default router;
