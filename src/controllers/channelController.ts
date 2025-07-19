@@ -18,7 +18,7 @@ export const cc=async (req:AuthenticatedRequest, res: Response) => {
     const { data: userData, error: userError } = await supabase
         .from('users')
         .select('id')
-        .eq('email', email_Id)
+        .ilike('email', email_Id)
         .single();
 
     if (userError || !userData) {
@@ -100,4 +100,40 @@ export const cc=async (req:AuthenticatedRequest, res: Response) => {
     res.status(500).json({ message: 'Error creating channel' });
     return;
   }
+};
+
+export const getChannels = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+    // Get serverId
+    const { server_id } = req.params;
+
+    if (!server_id) {
+        res.status(400).json({ error: 'Server ID is required in the URL.' });
+        return;
+    }
+
+    try {
+        // Fetch channels 
+        const { data: channels, error } = await supabase
+            .from('channels')
+            .select('id,name,type,is_private')
+            .eq('server_id', server_id); 
+
+        
+        if (error) {
+            throw new Error(`Database error: ${error.message}`);
+        }
+
+        if (!channels) {
+            res.status(200).json([]);
+            return;
+        }
+
+        // Success Response 
+        res.status(200).json(channels);
+
+    } catch (error) {
+        const err = error as Error;
+        console.error('Error in getChannels controller:', err.message);
+        res.status(500).json({ error: 'Internal server error.', details: err.message });
+    }
 };
