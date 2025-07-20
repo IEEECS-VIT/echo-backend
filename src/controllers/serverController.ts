@@ -2,6 +2,8 @@ import express, { Router,Request,Response } from 'express';
 import { supabase } from '../client/supabase';
 import { AuthenticatedRequest } from '../middleware/authMiddleware';
 import { v4 as uuidv4 } from 'uuid';
+import { join } from 'path';
+import { error } from 'console';
 
 
 
@@ -46,7 +48,7 @@ const serverId = uuidv4();
         res.status(400).json({ error: 'owner_email is required in the request body.' });
         return;
     }
-
+    console.log(email_Id);
     const { data: userData, error: userError } = await supabase
         .from('users')
         .select('id')
@@ -201,5 +203,92 @@ export const getServers = async (req: Request, res: Response): Promise<void> => 
         const err = error as Error;
         console.error('Error in getServers controller:', err.message);
         res.status(500).json({ error: 'Internal server error.', details: err.message });
+    }
+};
+
+export const joinServer = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+    
+    const { serverId } = req.body;
+    const email_Id = req.user?.email // Get the user ID directly from the token
+    if (!serverId) {
+        res.status(400).json({ error: 'Server ID is required in the request body.' });
+        return;
+    }
+
+    try {
+
+          if (!email_Id) {
+        res.status(400).json({ error: 'owner_email is required in the request body.' });
+        return;
+    }
+    console.log(email_Id);
+    const { data: userData, error: userError } = await supabase
+        .from('users')
+        .select('id')
+        .ilike('email', email_Id)
+        .single();
+
+    if (userError || !userData) {
+        res.status(404).json({ error: `User with email ${email_Id} not found.` });
+        return;
+    }
+        // --- Step 1: Check if the server actually exists ---
+        const { data: server, error: serverError } = await supabase
+            .from('servers')
+            .select('id')
+            .eq('id', serverId) // Use .eq() for exact matching
+            .single();
+
+        if (serverError || !server) {
+            res.status(404).json({ error: `Server with ID ${serverId} not found.` });
+            return;
+        }
+
+        const requestingUserId=userData.id; // Get the user ID directly from the token
+
+
+        console.log('Server exists:', server);
+
+        // --- Step 2: Check if the user is already a member of the server ---
+        const { data: existingMember, error: memberCheckError } = await supabase
+            .from('server_members')
+            .select('*')
+            .eq('user_id', requestingUserId)
+            .eq('server_id', serverId)
+            .single();
+
+        if (memberCheckError && memberCheckError.code !== 'PGRST116') { // Ignore "no rows found" error
+            throw new Error(`Error checking membership: ${memberCheckError.message}`);
+        }
+        if (existingMember) {
+            res.status(409).json({ error: 'You are already a member of this server.' });
+            return;
+        }
+
+        // --- Step 3: Insert the new member into the server_members table ---
+        const { data: newMember, error: joinError } = await supabase
+            .from('server_members')
+            .insert({
+                user_id: requestingUserId,
+                server_id: serverId
+            })
+            .select()
+            .single();
+
+        if (joinError) {
+            // This could be a database constraint error or RLS issue
+            throw new Error(`Failed to join server: ${joinError.message}`);
+        }
+
+        // --- Success Response ---
+        res.status(201).json({
+            message: 'Successfully joined the server.',
+            data: newMember
+        });
+
+    } catch (error) {
+        const err = error as Error;
+        console.error('Error in joinServer controller:', err.message);
+        res.status(500).json({ error: 'An unexpected internal server error occurred.' });
     }
 };
