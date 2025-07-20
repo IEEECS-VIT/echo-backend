@@ -3,12 +3,119 @@ import { AuthenticatedRequest } from "../middleware/authMiddleware";
 import { supabase } from '../client/supabase';
 import {v4} from 'uuid';
 
+
+export const dmMessagePostController = async (req:Request , res:Response):Promise<any>=>{
+    try{
+        const id = v4();
+        const {content, thread_id , sender_id , reply_to, receiver_id} = req.body;
+        if(!sender_id){
+            return res.status(400).json({msg:"Please send a sender_id"});
+        }
+        if(!receiver_id){
+            return res.status(400).json({msg:"Please send a receiver_id"});
+        }
+
+        //now lets handle the attachments
+        let media_url:string | null = null;
+        if (req.file){
+            const fileExt = req.file.originalname.split('.').pop();//gets the extension of the file
+            const fileName = `${id}.${fileExt}`;//filename to store as , should not conflict.
+
+            const {data, error: uploadError}= await supabase.storage
+                .from('attachments')
+                .upload(fileName, req.file.buffer, {
+                contentType: req.file.mimetype,
+                upsert: true,
+            });
+
+            if(uploadError){
+                console.error(uploadError);
+                return res.status(500).json({'error':'Server error'});
+            }
+
+            // Get public URL
+            const { data: publicUrlData } = supabase.storage.from('attachments').getPublicUrl(fileName);
+            media_url = publicUrlData.publicUrl;
+            console.log(media_url);
+        }
+
+        let final_thread_id ;
+        if(!thread_id){
+            //now check if a thread between these users already exist , if not create a new one and pass it to frontend
+            const [user1_id, user2_id] = (sender_id < receiver_id)? [sender_id, receiver_id]:[receiver_id, sender_id];// Ensure consistent ordering
+            
+            const { data: existing, error: fetchError } = await supabase
+                .from('dm_threads')
+                .select('id')
+                .eq('user1_id', user1_id)
+                .eq('user2_id', user2_id)
+                .maybeSingle();
+
+            if(fetchError){
+                console.error('Fetch error:', fetchError);
+                throw fetchError;
+            }
+
+            if(existing){
+                final_thread_id = existing.id;
+            }
+            else{
+                //create a new thread if a thread does not exist between these users.
+                const threadv4 = v4();
+                
+                const { error: threadInsertError } = await supabase.from('dm_threads').insert({
+                    id: threadv4,
+                    user1_id,
+                    user2_id,
+                });
+
+                if (threadInsertError) {
+                    console.log('Thread insert error:', threadInsertError);
+                    return res.status(500).json({ error: 'Server error while creating thread' });
+                }
+
+                final_thread_id = threadv4;
+            }
+        }
+        else{
+            final_thread_id = thread_id;
+        }
+        //finally insert the data in the dm_messages table
+        const { error: insertError } = await supabase.from('dm_messages').insert({
+                id,
+                content,
+                media_url,
+                is_edited: false,
+                thread_id : final_thread_id,
+                sender_id,
+                reply_to: reply_to || null,
+            });
+
+        if (insertError) {
+            console.log(insertError);
+            return res.status(500).json({error:'Server error'});
+        }
+
+        res.status(201).json({
+            msg:'DM message saved successfully', 
+            thread_id:final_thread_id,
+            message_id: id,
+            media_url: media_url
+        })
+    }
+    catch(error:any){
+        console.log(`Error in DmMessagePost Controller : ${error}`);
+        return res.status(500).json({msg:"Server Error"});
+    }
+}
+
+
+
 export const messagePostController = async (req:Request, res:Response):Promise<any>=>{
     
     try{
         const id = v4();
-        const {content, channel_id, sender_id, reply_to, is_dm } = req.body;
-        const is_dm_bool = (is_dm === 'true'); //else false
+        const {content, channel_id, sender_id, reply_to} = req.body;
         if(!channel_id){
             return res.status(400).json({'error':'No channelId received.'});
         } 
@@ -41,41 +148,27 @@ export const messagePostController = async (req:Request, res:Response):Promise<a
             console.log(media_url);
         }
         
-        if(!is_dm_bool){ //for server channels
-        //store all data in "Message" table 
-            const { error: insertError } = await supabase.from('messages').insert({
-                id,
-                content,
-                media_url,
-                is_edited: false,
-                channel_id,
-                sender_id,
-                reply_to: reply_to || null,
-            });
+         
+        const { error: insertError } = await supabase.from('messages').insert({
+            id,
+            content,
+            media_url,
+            is_edited: false,
+            channel_id,
+            sender_id,
+            reply_to: reply_to || null,
+        });
 
-            if (insertError) {
-                console.error(insertError);
-                return res.status(500).json({error:'Server error'});
-            }
+        if (insertError) {
+            console.error(insertError);
+            return res.status(500).json({error:'Server error'});
         }
-        else{
-            //its a dm
-            const { error: insertError } = await supabase.from('dm_messages').insert({
-                id,
-                content,
-                media_url,
-                is_edited: false,
-                thread_id : channel_id,
-                sender_id,
-                reply_to: reply_to || null,
-            });
-
-            if (insertError) {
-                console.error(insertError);
-                return res.status(500).json({error:'Server error'});
-            }
-        }
-        return res.status(200).json({msg:'Message saved successfully'});
+        
+        return res.status(200).json({
+            msg:'Message saved successfully',
+            message_id : id,
+            media_url : media_url
+        });
     }
     catch(error:any){
         console.error(error);
