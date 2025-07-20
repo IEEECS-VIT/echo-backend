@@ -2,20 +2,14 @@ FROM node:18-alpine
 
 WORKDIR /app
 
-# Copy package files
 COPY package*.json ./
-
-# Install dependencies
 RUN npm install
 
-# Copy source code
+# Optional: If you're using TypeScript
+RUN npm install -g ts-node typescript nodemon
+
 COPY . .
 
-# Build the application
-RUN npm run build
-
-# Expose port
 EXPOSE 5000
 
-# Start the application
-CMD ["node", "dist/server.js"]
+CMD ["npx", "nodemon", "--watch", "src", "--exec", "ts-node", "src/server.ts"]
