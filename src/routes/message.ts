@@ -6,13 +6,14 @@ import multer from 'multer';
 const storage = multer.memoryStorage();
 const upload = multer({ storage }); 
 
-import { messagePostController, messageGetController, getDmMessages} from "../controllers/messageController";
+import { messagePostController, messageGetController, getDmMessages, dmMessagePostController} from "../controllers/messageController";
 
 /*IMPORTANT : change the REST route below to the socket architecture as needed */
 
 /*IMPORTANT : implement the auth middleware*/
 
 router.post('/upload', upload.single('file'), messagePostController);
+router.post('/upload_dm', upload.single('file'), dmMessagePostController);
 router.get('/fetch', messageGetController);
 router.get('/:userId/getDms',getDmMessages);
 
