@@ -1,152 +1,117 @@
 import { Request,Response } from 'express';
 import { supabase } from '../client/supabase';
 import { AuthenticatedRequest } from '../middleware/authMiddleware';
-import { v4 as uuidv4 } from 'uuid';
-import { join } from 'path';
-import { error } from 'console';
 
-export const screation = async (req: AuthenticatedRequest, res: Response) => {
+/**
+ * Handles the creation of a new server.
+ * This involves:
+ * 1. Uploading an icon to Supabase Storage.
+ * 2. Finding the user's ID from their email.
+ * 3. Calling a single database RPC to create the server and all its
+ * related resources (member, channel, roles) in one transaction.
+ * 4. Fetching and returning the complete server object.
+ */
+export const screation = async (req: AuthenticatedRequest, res: Response): Promise<void>=> {
   const { name } = req.body;
   const user = req.user;
   const email_Id = user?.email;
-
   const file = req.file;
+
+  // --- Input Validation ---
   if (!file) {
     res.status(400).json({ error: 'Icon image is required' });
-    return;
+    return 
   }
-  const filePath = `icons/${Date.now()}-${file.originalname}`;
-  let uploadResponse;
+  if (!name) {
+    res.status(400).json({ error: 'Server name is required' });
+    return   
+  }
+  if (!email_Id) {
+    res.status(401).json({ error: 'Authentication error: User email not found.' });
+    return   
+  }
+
   try {
-    uploadResponse = await supabase.storage
+    // --- 1. Upload Icon to Storage ---
+    const filePath = `icons/${Date.now()}-${file.originalname}`;
+    const { error: uploadError } = await supabase.storage
       .from('server-icons')
       .upload(filePath, file.buffer, {
         contentType: file.mimetype,
-        upsert: false,
       });
-  } catch (err) {
-    res.status(500).json({ error: 'Image upload threw error', details: err });
-    return;
-  }
-  const { error: uploadError } = uploadResponse || {};
-  if (uploadError) {
-    res.status(500).json({ error: 'Image upload failed', details: uploadError });
-    return;
-  }
-  const { data: urlData } = supabase.storage.from('server-icons').getPublicUrl(filePath);
-  const icon_url = urlData?.publicUrl;
-  if (!icon_url) {
-    res.status(500).json({ error: 'Failed to get public URL for uploaded icon.' });
-    return;
-  }
-  const serverId = uuidv4();
-  try {
-    if (!email_Id) {
-      res.status(400).json({ error: 'owner_email is required in the request body.' });
-      return;
+
+    if (uploadError) {
+      console.error('Supabase storage upload error:', uploadError);
+      res.status(500).json({ error: 'Image upload failed', details: uploadError.message });
+    return     
     }
 
+    const { data: urlData } = supabase.storage.from('server-icons').getPublicUrl(filePath);
+    const icon_url = urlData?.publicUrl;
+
+    if (!icon_url) {
+      res.status(500).json({ error: 'Failed to get public URL for uploaded icon.' });
+      return     
+    }
+
+    // --- 2. Get User ID ---
     const { data: userData, error: userError } = await supabase
       .from('users')
       .select('id')
       .ilike('email', email_Id)
       .single();
+
     if (userError || !userData) {
-      res.status(404).json({ error: `User with email ${email_Id} not found.`, details: userError });
-      return;
+      console.error('User lookup error:', userError);
+      res.status(404).json({ error: `User not found.`, details: userError?.message });
+          return 
     }
     const user_Id = userData.id;
-    const { data: server, error: serverError } = await supabase
-      .from('servers')
-      .insert([
-        {
-          id: serverId,
-          name,
-          icon_url,
-          owner_id: user_Id,
-        },
-      ])
-      .select()
-      .single();
-    if (serverError || !server) {
-      throw new Error(serverError?.message || 'Server creation failed');
-    }
-    const { error: memberError } = await supabase
-      .from('server_members')
-      .insert([
-        {
-          user_id: user_Id,
-          server_id: serverId,
-        },
-      ]);
-    if (memberError) {
-      throw new Error(memberError.message);
-    }
-    const channelId = uuidv4();
-    const { error: channelError } = await supabase
-      .from('channels')
-      .insert([
-        {
-          name: 'general',
-          type: 'text',
-          is_private: false,
-          server_id: serverId,
-          id: channelId,
-        },
-      ]);
-    if (channelError) {
-      throw new Error(channelError.message);
-    }
-    const roleId = uuidv4();
 
-    const { data: ownerRole, error: roleError } = await supabase
-      .from('roles')
-      .insert([
-        {
-          id: roleId,
-          server_id: serverId,
-          name: 'Owner',
-          color: '#FFD700',
-          position: 0,
-        },
-      ])
-      .select()
-      .single();
-    if (roleError || !ownerRole) {
-      throw new Error(`Failed to create owner role: ${roleError?.message}`);
-    }
-    const { error: permError } = await supabase.from('permissions').insert({
-      role_id: ownerRole.id,
-      can_manage_server: true,
-      can_kick_members: true,
-      can_manage_channels: true,
-      can_send_messages: true,
-      can_connect_voice: true,
+    // --- 3. Call RPC for Transactional Creation ---
+    const { data: newServerId, error: rpcError } = await supabase.rpc('create_server_with_resources', {
+    server_name: name,
+    server_icon_url: icon_url,
+    owner_user_id: user_Id,
     });
-    if (permError) {
-      throw new Error(`Failed to set permissions for owner role: ${permError.message}`);
+
+    if (rpcError) {
+      // The RPC handles the transaction, so if it fails, nothing is committed to the DB.
+      console.error('RPC `create_server_with_resources` error:', rpcError);
+      res.status(500).json({ message: 'Error creating server', details: rpcError.message });
+          return 
     }
-    const { error: userRoleError } = await supabase.from('user_roles').insert({
-      user_id: user_Id,
-      role_id: ownerRole.id,
-    });
-    if (userRoleError) {
-      throw new Error(`Failed to assign owner role to user: ${userRoleError.message}`);
-    }
-    const { data: fullServer } = await supabase
+
+    // --- 4. Fetch and Return Full Server Data ---
+    const { data: fullServer, error: fetchError } = await supabase
       .from('servers')
-      .select(`*,server_members (*),channels (*)`)
-      .eq('id', serverId)
+      .select(`*, server_members (*), channels (*)`)
+      .eq('id', newServerId)
       .single();
+
+    if (fetchError) {
+      console.error('Error fetching newly created server:', fetchError);
+      // The server was created, but we failed to fetch the full object for the response.
+      // A 207 status indicates partial success.
+      res.status(207).json({ 
+          message: 'Server created successfully, but failed to fetch the complete data.', 
+          serverId: newServerId,
+          details: fetchError.message 
+      });
+          return 
+    }
+
     res.status(201).json(fullServer);
-    return;
+    return 
+
   } catch (err) {
-    res.status(500).json({ message: 'Error creating server', details: err instanceof Error ? err.message : err });
-    return;
+    console.error('Unexpected error in server creation:', err);
+    const details = err instanceof Error ? err.message : 'An unknown error occurred.';
+    res.status(500).json({ message: 'An unexpected error occurred.', details });
+    return 
   }
 };
-
-export const getServers = async (req: Request, res: Response): Promise<void> => {
+export const getServers = async (req: Request, res: Response):Promise<void> => {
     try {
         // 'servers' table records 
         const { data: servers, error } = await supabase
@@ -167,7 +132,7 @@ export const getServers = async (req: Request, res: Response): Promise<void> => 
 
         //Success.
         res.status(200).json(servers);
-
+        return;
     } catch (error) {
         const err = error as Error;
         console.error('Error in getServers controller:', err.message);
@@ -176,83 +141,53 @@ export const getServers = async (req: Request, res: Response): Promise<void> => 
 };
 
 export const joinServer = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
-    
     const { serverId } = req.body;
-    const email_Id = req.user?.email // Get the user ID directly from the token
+    const email_Id = req.user?.email;
+
+    // --- Input Validation ---
     if (!serverId) {
         res.status(400).json({ error: 'Server ID is required in the request body.' });
         return;
     }
+    if (!email_Id) {
+        res.status(401).json({ error: 'Authentication error: User email not found.' });
+        return;
+    }
 
     try {
-
-          if (!email_Id) {
-        res.status(400).json({ error: 'owner_email is required in the request body.' });
-        return;
-    }
-    console.log(email_Id);
-    const { data: userData, error: userError } = await supabase
-        .from('users')
-        .select('id')
-        .ilike('email', email_Id)
-        .single();
-
-    if (userError || !userData) {
-        res.status(404).json({ error: `User with email ${email_Id} not found.` });
-        return;
-    }
-        // --- Step 1: Check if the server actually exists ---
-        const { data: server, error: serverError } = await supabase
-            .from('servers')
+        // --- 1. Get User ID from email ---
+        const { data: userData, error: userError } = await supabase
+            .from('users')
             .select('id')
-            .eq('id', serverId) // Use .eq() for exact matching
+            .ilike('email', email_Id)
             .single();
 
-        if (serverError || !server) {
-            res.status(404).json({ error: `Server with ID ${serverId} not found.` });
+        if (userError || !userData) {
+            res.status(404).json({ error: `User with email ${email_Id} not found.` });
             return;
         }
+        const requestingUserId = userData.id;
 
-        const requestingUserId=userData.id; // Get the user ID directly from the token
+        // --- 2. Call RPC for Secure, Transactional Join ---
+        // This single function handles checking for existing membership,
+        // adding the user, and assigning the 'Member' role.
+        const { data: newMember, error: rpcError } = await supabase.rpc('join_server_and_assign_member_role', {
+            p_server_id: serverId,
+            p_user_id: requestingUserId,
+        });
 
-
-        console.log('Server exists:', server);
-
-        // --- Step 2: Check if the user is already a member of the server ---
-        const { data: existingMember, error: memberCheckError } = await supabase
-            .from('server_members')
-            .select('*')
-            .eq('user_id', requestingUserId)
-            .eq('server_id', serverId)
-            .single();
-
-        if (memberCheckError && memberCheckError.code !== 'PGRST116') { // Ignore "no rows found" error
-            throw new Error(`Error checking membership: ${memberCheckError.message}`);
-        }
-        if (existingMember) {
-            res.status(409).json({ error: 'You are already a member of this server.' });
-            return;
-        }
-
-        // --- Step 3: Insert the new member into the server_members table ---
-        const { data: newMember, error: joinError } = await supabase
-            .from('server_members')
-            .insert({
-                user_id: requestingUserId,
-                server_id: serverId
-            })
-            .select()
-            .single();
-
-        if (joinError) {
-            // This could be a database constraint error or RLS issue
-            throw new Error(`Failed to join server: ${joinError.message}`);
-        }
+        if (rpcError) {
+            // The RPC will error if the user is already a member or if the 'Member' role doesn't exist.
+            console.error('RPC `join_server_and_assign_member_role` error:', rpcError);
+            // Return a 409 Conflict for "already a member" or other issues.
+            res.status(409).json({ message: 'Failed to join server.', details: rpcError.message });
+            return 
+          }
 
         // --- Success Response ---
         res.status(201).json({
-            message: 'Successfully joined the server.',
-            data: newMember
+            message: 'Successfully joined the server and assigned Member role.',
+            data: newMember?.[0] // The RPC returns an array
         });
 
     } catch (error) {
