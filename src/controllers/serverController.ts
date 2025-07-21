@@ -108,6 +108,7 @@ const serverId = uuidv4();
 
   if (channelError) {
     throw new Error(channelError.message);
+    throw new Error(channelError.details);
   }
 
    const { data: ownerRole, error: roleError } = await supabase
