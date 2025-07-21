@@ -1,5 +1,8 @@
 import { Server, Socket } from 'socket.io';
 
+
+
+console.log('Setting up voice socket');
 export const setupVoiceSocket = (io: Server) => {
   io.on('connection', (socket: Socket) => {
     console.log('User connected for voice:', socket.id);
