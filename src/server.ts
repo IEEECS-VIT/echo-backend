@@ -14,11 +14,38 @@ import channelroutes from './routes/channel';
 import serverroutes from './routes/servers';
 import roleroutes from './routes/roles';
 import { rateLimiter } from './middleware/rateLimiter';
+import { setupChatSocket } from './sockets/chatSocket';
+import { subscribeToChannel } from './redis/sub';
+import { createServer } from 'http';
+
 
 
 import { setupVoiceSocket } from './sockets/voiceSocket';
 
 const app = express();
+const httpServer = createServer(app);
+
+const io = new Server(httpServer, {
+  cors: {
+    origin: "http://localhost:3000",
+    methods: ["GET", "POST"]
+  }
+});
+
+setupVoiceSocket(io);
+
+
+io.on('connection', (socket) => {
+  console.log("Socket connected", socket.id);
+
+  socket.on('disconnect', () => {
+    console.log("Socket disconnected", socket.id);
+  });
+
+  socket.on('error', (err) => {
+    console.error("Socket error", err);
+  });
+});
 
 // Middleware
 app.use(express.json());
@@ -46,6 +73,6 @@ app.get('/', (_req: Request, res: Response) => {
 });
 
 const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => {
+httpServer.listen(PORT, () => {
   console.log(`✅ Server running on ahhhhhhhhh port ${PORT}`);
 }); 
