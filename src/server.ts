@@ -14,32 +14,11 @@ import channelroutes from './routes/channel';
 import serverroutes from './routes/servers';
 import roleroutes from './routes/roles';
 import { rateLimiter } from './middleware/rateLimiter';
-import { setupChatSocket } from './sockets/chatSocket';
-import { subscribeToChannel } from './redis/sub';
 
+
+import { setupVoiceSocket } from './sockets/voiceSocket';
 
 const app = express();
-
-const server = http.createServer(app);
-const io = new Server(server,{
-  cors: {
-    origin: 'http://localhost:3000', //frontend origin
-    methods: ['GET','POST'],
-    credentials: true,
-  },
-});
-
-io.on('connection', (socket) => {
-  console.log("Socket connected", socket.id);
-
-  socket.on('disconnect', () => {
-    console.log("Socket disconnected", socket.id);
-  });
-
-  socket.on('error', (err) => {
-    console.error("Socket error", err);
-  });
-});
 
 // Middleware
 app.use(express.json());
@@ -59,12 +38,14 @@ app.use('/api/profile', profileRoutes);
 app.use('/api/newserver',serverroutes);
 app.use('/api/user',channelroutes);
 app.use('/api/roles',roleroutes);
+
+
 // Health check endpoint
 app.get('/', (_req: Request, res: Response) => {
   res.json({ message: 'Hello from echo-backend! helolllolol', status: 'healthy' });
 });
 
 const PORT = process.env.PORT || 5000;
-server.listen(PORT, () => {
-  console.log(`✅ Server running on port ${PORT}`);
+app.listen(PORT, () => {
+  console.log(`✅ Server running on ahhhhhhhhh port ${PORT}`);
 }); 
