@@ -11,6 +11,7 @@ import profileRoutes from './routes/profile';
 import channelroutes from './routes/channel';
 import serverroutes from './routes/servers';
 import roleroutes from './routes/roles';
+import contactroutes from "./routes/contact";
 import { rateLimiter } from './middleware/rateLimiter';
 import { createServer } from 'http';
 import { Server } from 'socket.io';
@@ -45,7 +46,7 @@ app.use('/api/profile', profileRoutes);
 app.use('/api/newserver',serverroutes);
 app.use('/api/user',channelroutes);
 app.use('/api/roles',roleroutes);
-
+app.use('/api/contact',contactroutes);
 
 // Health check endpoint
 app.get('/', (_req: Request, res: Response) => {
