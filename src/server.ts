@@ -14,7 +14,6 @@ import channelroutes from './routes/channel';
 import serverroutes from './routes/servers';
 import roleroutes from './routes/roles';
 import contactroutes from "./routes/contact";
-import userRoutes from './routes/user';
 
 import { rateLimiter } from './middleware/rateLimiter';
 import { setupChatSocket } from './sockets/chatSocket';
@@ -60,7 +59,6 @@ app.use('/api/profile', profileRoutes);
 app.use('/api/newserver', serverroutes);
 app.use('/api/channel', channelroutes);
 app.use('/api/roles', roleroutes);
-app.use('/api/user', userRoutes);
 app.use('/api/contact', contactroutes);
 
 
