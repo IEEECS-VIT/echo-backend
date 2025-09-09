@@ -36,6 +36,11 @@
         "uuid": "^8.3.2"
     },
     "devDependencies": {
+        "@types/busboy": "^1.5.4",
+        "@types/cookie-parser": "^1.4.9",
+        "@types/cors": "^2.8.19",
+        "@types/jsonwebtoken": "^9.0.10",
+        "@types/uuid": "^10.0.0",
         "ts-node": "^10.9.1"
     }
 }
