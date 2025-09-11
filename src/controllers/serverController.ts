@@ -207,6 +207,16 @@ export const joinServer = async (req: AuthenticatedRequest, res: Response): Prom
     }
 };
 
+interface Invite {
+  id: string;
+  inviter_id: string;
+  server_id: string;
+  use_limit: number | null;   
+  expiry: string | null;      
+  people_joined: number;
+  is_valid: boolean;
+}
+
 //change to AuthorizedRequest if needed.
 export const inviteToServer = async(req:Request, res:Response):Promise<any> =>{
   const { server_id, user_id , limit , expiry } = req.body;
@@ -227,7 +237,7 @@ export const inviteToServer = async(req:Request, res:Response):Promise<any> =>{
           .from('servers')
           .select('owner_id')
           .eq('server_id', server_id)
-          .single();
+          .maybeSingle();
 
     if(!serverData){
       return res.status(404).json({error:"No such server id found"});
@@ -265,8 +275,34 @@ export const inviteToServer = async(req:Request, res:Response):Promise<any> =>{
 };
 
 
+
 export const joinWithInvite = async(req:Request, res:Response):Promise<any> =>{
   const {invite_id, user_id } = req.body;
+
+  /* when making it authenticated 
+  const email_Id = req.user?.email;
+  if (!email_Id) {
+        res.status(401).json({ error: 'Authentication error: User email not found.' });
+        return;
+  }
+  const { data: userData, error: userError } = await supabase
+  .from("users")
+  .select("id")
+  .eq("email", email_Id)
+  .single();
+
+if (!userData) {
+  return res.status(404).json({ error: "User not found" });
+}
+
+if (userError) {
+  console.log("Error fetching user id:", userError);
+  return res.status(500).json({ error: "Server error while fetching user" });
+}
+
+const user_id = userData.id;
+*/
+
   if(!invite_id){
     return res.status(400).json({error:"No invite_id received in body"});
   }
@@ -278,23 +314,69 @@ export const joinWithInvite = async(req:Request, res:Response):Promise<any> =>{
         .from('invites')
         .select('*')
         .eq('id', invite_id)
+        .single()
+    const invite = invite_data as Invite | null;
+    if(!invite){
+      return res.status(404).json({error : "No such invite id found"});
+    }
     if(queryerror){
       console.log(`Error in querying from invites table : ${queryerror}`);
       return res.status(500).json({error : "Server Error in querying from invites"});
     }
-    if(!invite_data){
-      return res.status(404).json({error : "No such invite id found"});
-    }
 
     //now check if the limit is already over or expired invite or is still valid
-    
+    if(invite && invite.use_limit && invite.use_limit <= invite.people_joined){
+      return res.status(400).json({error : "More people cannot join using this invite id"});
+    }
+    if (invite.expiry && new Date(invite.expiry) < new Date()) {
+      return res.status(400).json({ error: "This invite has expired" });
+    }
     //then check if the user is already a part of this server
+    const { data: existingMember, error: memberError } = await supabase
+      .from("server_members")
+      .select("user_id")
+      .eq("server_id", invite.server_id)
+      .eq("user_id", user_id)
+      .maybeSingle();
+
+    if (memberError) {
+      console.log("Error checking membership:", memberError);
+      return res.status(500).json({ error: "Server error while checking membership" });
+    }
+
+    if (existingMember) {
+      return res.status(400).json({ error: "User is already a member of this server" });
+    }
 
     //if yes then add this user in the server_members table 
 
-    //increment the number of people used this in this invite
+    const { error: insertMemberError } = await supabase
+      .from("server_members")
+      .insert({
+        server_id: invite.server_id,
+        user_id,
+        role: "member"   
+      });
+
+    if (insertMemberError) {
+      console.log("Error adding user to server_members:", insertMemberError);
+      return res.status(500).json({ error: "Could not add user to server" });
+    }
+
+    const { error: updateError } = await supabase
+      .from("invites")
+      .update({ people_joined: invite.people_joined + 1 })
+      .eq("id", invite_id);
+
+    if (updateError) {
+      console.log("Error updating invite usage:", updateError);
+    }
+
+    return res.status(201).json({msg:"Joined server successfully", server_id : invite.server_id});
+
   }
   catch(e){
-
+    console.log(`Error in joining server : ${e}`);
+    return res.status(500).json({msg:'Server Error'});
   }
 }
