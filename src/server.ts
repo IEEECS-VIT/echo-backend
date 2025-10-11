@@ -29,7 +29,7 @@ const frontend = process.env.FRONTEND_URL || "http://localhost:3000"
 
 const io = new Server(httpServer, {
   cors: {
-    origin: [ frontend, "http://localhost:3000"],
+    origin: [frontend, "http://localhost:3000"],
     methods: ["GET", "POST"]
   }
 });
@@ -44,7 +44,7 @@ setupVoiceSocket();
 app.use(express.json());
 app.use(cookieParser());
 app.use(cors({
-  origin: process.env.FRONTEND_URL,
+  origin: [frontend, "http://localhost:3000"],
   credentials: true
 }));
 
