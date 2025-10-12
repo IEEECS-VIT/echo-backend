@@ -29,9 +29,13 @@ const frontend = process.env.FRONTEND_URL || "http://localhost:3000"
 
 const io = new Server(httpServer, {
   cors: {
-    origin: [frontend, "http://localhost:3000"],
-    methods: ["GET", "POST"]
-  }
+    origin: [frontend, "http://localhost:3000", "http://127.0.0.1:3000"],
+    methods: ["GET", "POST"],
+    credentials: true,
+    allowedHeaders: ["*"]
+  },
+  transports: ["polling", "websocket"],
+  allowEIO3: true
 });
 
 app.set('socketio', io);
@@ -44,8 +48,11 @@ setupVoiceSocket();
 app.use(express.json());
 app.use(cookieParser());
 app.use(cors({
-  origin: [frontend, "http://localhost:3000"],
-  credentials: true
+  origin: [frontend, "http://localhost:3000", "http://127.0.0.1:3000"],
+  credentials: true,
+  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With", "Accept", "Origin"],
+  exposedHeaders: ["set-cookie"]
 }));
 
 
