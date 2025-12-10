@@ -11,9 +11,9 @@ let ioInstance: Server | null = null;
 
 export const setIO = (io: Server) => {
   ioInstance = io;
-  if(ioInstance === io){
-    console.log("IO instance set successfully.");
-  }
+  // if(ioInstance === io){
+  //   console.log("IO instance set successfully.");
+  // }
 };
 
 export const getIO = (): Server => {
@@ -23,13 +23,13 @@ export const getIO = (): Server => {
 
 export const setupChatSocket = (io: Server) => {
   io.on("connection", (socket: Socket) => { 
-    console.log(`Chat Socket: User connected - ${socket.id}`);
+    // console.log(`Chat Socket: User connected - ${socket.id}`);
 
     // The frontend sends the userId via socket.auth 
     const userId = socket.handshake.auth.userId;
     if (userId) {
       userSocketMap.set(userId, socket.id);
-      console.log(`User ${userId} registered with socket ${socket.id}`);
+      // console.log(`User ${userId} registered with socket ${socket.id}`);
     } else {
       console.warn(`No userId in handshake.auth for socket ${socket.id}`);
     }
@@ -37,7 +37,7 @@ export const setupChatSocket = (io: Server) => {
     // chat for channel 
     socket.on("join_room", (channelId: string) => {
       socket.join(channelId);
-      console.log(`User ${socket.id} joined chat room ${channelId}`);
+      // console.log(`User ${socket.id} joined chat room ${channelId}`);
     });
 
 
@@ -55,23 +55,22 @@ export const setupChatSocket = (io: Server) => {
           sender_id: data.senderId,
         });
 
-        // 3. If successful, broadcast the complete message from the DB to everyone in the room(Gemini comment  didnt understood why though...)
+        // 3. If successful, broadcast the complete message from the DB to everyone in the room
         io.to(data.channelId).emit('new_message', savedMessage);
         
-        console.log(`Message from ${data.senderId} was saved and broadcasted to room ${data.channelId}`);
+        // console.log(`Message from ${data.senderId} was saved and broadcasted to room ${data.channelId}`);
 
       } catch (error) {
-        // 4. If an error occurs, log itx...
+        // 4. If an error occurs, log it...
         console.error('Failed to save or broadcast message:', error);
         socket.emit('message_error', 'Your message could not be sent.');
       }
     });
 
-    // (Removed redundant simple disconnect logger; cleanup handled below)
     // dm chat
     // This event should now only handle text-based DMs for performance.
     socket.on("send_dm", async (dmPayload: { senderId: string; receiverId: string; message: string; mediaurl?: UrlObject }) => {
-        console.log('Received DM payload:', dmPayload);
+        // console.log('Received DM payload:', dmPayload);
         const { senderId, receiverId, message, mediaurl } = dmPayload;
         
         if (!receiverId || !senderId || !message) {
@@ -82,7 +81,7 @@ export const setupChatSocket = (io: Server) => {
 
         try {
             // STEP 1: Correctly find or create the thread ID using persistent User IDs.
-            console.log(`Processing DM from ${senderId} to ${receiverId}`);
+            // console.log(`Processing DM from ${senderId} to ${receiverId}`);
             let threadId: string;
             
             // Sort the actual user IDs to ensure the thread is always found regardless of who sent the first message.
@@ -98,10 +97,10 @@ export const setupChatSocket = (io: Server) => {
             // STEP 2: Handle both existing and new threads.
             if (existingThread) {
                 threadId = existingThread.id;
-                console.log(`Found existing DM thread ${threadId} for users ${user1_id} and ${user2_id}`);
+                // console.log(`Found existing DM thread ${threadId} for users ${user1_id} and ${user2_id}`);
             } else {
                 // If the thread doesn't exist, create it.
-                console.log(`Creating new DM thread for users ${user1_id} and ${user2_id}`);
+                // console.log(`Creating new DM thread for users ${user1_id} and ${user2_id}`);
                 const { data: newThread, error: newThreadError } = await supabase
                     .from('dm_threads')
                     .insert({ user1_id, user2_id })
@@ -112,7 +111,7 @@ export const setupChatSocket = (io: Server) => {
                     throw newThreadError;
                 }
                 threadId = newThread.id;
-                console.log(`Created new DM thread ${threadId}`);
+                // console.log(`Created new DM thread ${threadId}`);
               }
 
             // STEP 3: Save the message using the determined threadId.
@@ -120,19 +119,19 @@ export const setupChatSocket = (io: Server) => {
               ...dmPayload,
               threadId: threadId 
             };
-            console.log('Saving DM message with payload:', extendedDmPayload);
+            // console.log('Saving DM message with payload:', extendedDmPayload);
             
             const savedDm = await saveDMMessage(extendedDmPayload);
-            console.log('DM saved successfully:', savedDm);
+            // console.log('DM saved successfully:', savedDm);
 
             // STEP 4: Emit to the recipient (if online) and send confirmation to the sender.
             // Use the clean, consistent data object from the database (`savedDm`).
             const receiverSocketId = userSocketMap.get(receiverId);
             if (receiverSocketId) {
-                console.log(`Emitting DM to online receiver ${receiverId} at socket ${receiverSocketId}`);
+                // console.log(`Emitting DM to online receiver ${receiverId} at socket ${receiverSocketId}`);
                 io.to(receiverSocketId).emit("receive_dm", savedDm);
             } else {
-                console.log(`User ${receiverId} is offline. DM is stored.`);
+                // console.log(`User ${receiverId} is offline. DM is stored.`);
             }
 
             // Send confirmation back to the sender so their UI updates instantly.
@@ -148,11 +147,11 @@ export const setupChatSocket = (io: Server) => {
       for (const [key, value] of userSocketMap.entries()) {
         if (value === socket.id) {
           userSocketMap.delete(key);
-          console.log(`User ${key} unregistered and disconnected.`);
+          // console.log(`User ${key} unregistered and disconnected.`);
           break;
         }
       }
-      console.log(`Socket disconnected: ${socket.id}`);
+      // console.log(`Socket disconnected: ${socket.id}`);
     });
   });
 };

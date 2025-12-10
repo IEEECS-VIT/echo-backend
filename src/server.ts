@@ -14,7 +14,8 @@ import channelroutes from './routes/channel';
 import serverroutes from './routes/servers';
 import roleroutes from './routes/roles';
 import contactroutes from "./routes/contact";
-import friendroutes from "./routes/friend"
+import friendroutes from "./routes/friend";
+import mentionRoutes from "./routes/mentions";
 
 import { rateLimiter } from './middleware/rateLimiter';
 import { setupChatSocket } from './sockets/chatSocket';
@@ -67,7 +68,8 @@ app.use('/api/newserver', serverroutes);
 app.use('/api/channel', channelroutes);
 app.use('/api/roles', roleroutes);
 app.use('/api/contact', contactroutes);
-app.use('/api/friends',friendroutes)
+app.use('/api/friends',friendroutes);
+app.use('/api/mentions', mentionRoutes);
 // Health check endpoint
 app.get('/', (_req: Request, res: Response) => {
   res.json({ message: 'Hello from echo-backend!', status: 'healthy' });

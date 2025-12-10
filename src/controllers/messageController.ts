@@ -3,6 +3,7 @@ import { supabase } from '../client/supabase';
 import { v4 } from 'uuid';
 import { AuthenticatedRequest } from "../middleware/authMiddleware";
 import { getIO, userSocketMap } from "../sockets/chatSocket";
+import { parseMentions, resolveMentions, processMentions } from '../lib/mentionParser';
 
 // --- Required for file uploads ---
 // Make sure you have `multer` installed in your project.
@@ -227,6 +228,7 @@ export const channelmessagePostController = async (req:AuthenticatedRequest, res
         const sender_id = req.user?.sub || body.sender_id;
         const channel_id = body.channel_id as string;
         const content = body?.content ?? "";
+        
         const anyReqCh = req as any;
         let uploadedFile = anyReqCh.file as Express.Multer.File | undefined;
         if (!uploadedFile && anyReqCh.files) {
@@ -303,6 +305,27 @@ export const channelmessagePostController = async (req:AuthenticatedRequest, res
         if(insertError){
             console.error(insertError);
             return res.status(500).json({error:'Server error during message save'});
+        }
+
+        // Handle mentions if content exists
+        if (content) {
+            const parsedMentions = parseMentions(content);
+            
+            if (parsedMentions.mentions.length > 0) {
+                // First resolve mentions (convert usernames to user IDs)
+                const resolvedMentions = await resolveMentions(parsedMentions.mentions, channel_id);
+                
+                if (resolvedMentions.length > 0) {
+                    // Then process mentions (store in DB and send notifications)
+                    await processMentions(
+                        id, // messageId
+                        channel_id, // channelId
+                        sender_id, // senderId
+                        content, // content
+                        resolvedMentions // resolved mentions array with user IDs
+                    );
+                }
+            }
         }
 
         const io = getIO();
