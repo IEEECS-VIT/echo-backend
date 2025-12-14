@@ -234,7 +234,7 @@ export const sendResetPasswordEmail = async (req: Request, res: Response):Promis
   }
 
   const { error } = await supabase.auth.resetPasswordForEmail(email, {
-    redirectTo: `${process.env.FRONTEND_URL || 'https://echo-web-lemon.vercel.app'}/auth/reset-password`, 
+    redirectTo: `${process.env.FRONTEND_URL || 'https://echo.ieeecsvit.com'}/reset-password`, 
   });
 
   if (error) {
