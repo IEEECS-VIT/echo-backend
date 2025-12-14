@@ -275,7 +275,7 @@ export const joinWithInvite = async (
   const userId = req.user?.sub;
 
   if (!userId) {
-    res.status(200).json({
+    res.status(401).json({
       success: false,
       code: "AUTH_REQUIRED",
       message: "Please login to join a server."
