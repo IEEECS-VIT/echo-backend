@@ -1266,7 +1266,7 @@ export const createServerInvite = async (req: AuthenticatedRequest, res: Respons
       message: 'Invite created successfully',
       invite: {
         ...newInvite,
-        inviteLink: `${process.env.FRONTEND_URL || 'http://localhost:3000'}/invite/${inviteId}`
+        inviteLink: `https://echo.ieeecsvit.com/invite/${inviteId}`
       }
     });
 
