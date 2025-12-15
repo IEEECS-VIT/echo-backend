@@ -2,15 +2,15 @@ import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
 import { supabase } from '../client/supabase';
 
-const ACCESS_TOKEN_MAX_AGE = 60 * 60; // 1 hour
-const REFRESH_THRESHOLD = 5 * 60; // refresh if <5min left
-const REFRESH_TOKEN_MAX_AGE = 60 * 60 * 24 * 30; // 30 days
+const ACCESS_TOKEN_MAX_AGE = 60 * 60; 
+const REFRESH_THRESHOLD = 5 * 60; 
+const REFRESH_TOKEN_MAX_AGE = 60 * 60 * 24 * 30; 
 
 interface JwtPayload {
-  sub: string;       // Supabase user ID
-  email?: string;    // Email
-  exp?: number;      // Expiration timestamp
-  iat?: number;      // Issued at
+  sub: string;       
+  email?: string;    
+  exp?: number;      
+  iat?: number;      
 }
 
 export interface AuthenticatedRequest extends Request {
@@ -20,8 +20,6 @@ export interface AuthenticatedRequest extends Request {
 
 export const authenticate = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   const authReq = req as AuthenticatedRequest;
-
-  console.log("=== AUTH MIDDLEWARE HIT ===");
   console.log("URL:", req.url);
   console.log("Method:", req.method);
 
@@ -38,7 +36,7 @@ export const authenticate = async (req: Request, res: Response, next: NextFuncti
     token = req.cookies.access_token;
   }
 
-  // Refresh token
+  // Refresh
   if (isMobileApp) {
     refreshToken = req.body?.refresh_token || (req.headers["x-refresh-token"] as string);
   } else if (req.cookies?.refresh_token) {
@@ -51,7 +49,7 @@ export const authenticate = async (req: Request, res: Response, next: NextFuncti
     return;
   }
 
-  // Step 1: Validate token with Supabase
+  // Validate token with Supabase
   try {
     const { data: userData, error: verifyError } = await supabase.auth.getUser(token);
 
@@ -59,7 +57,7 @@ export const authenticate = async (req: Request, res: Response, next: NextFuncti
       throw new Error("Invalid or expired token");
     }
 
-    // Step 2: Decode JWT for expiration (Supabase does not provide exp in getUser)
+    // Decode JWT for expiration (Supabase does not provide exp in getUser)
     const decoded: any = jwt.decode(token);
     const exp = decoded?.exp;
 
@@ -79,7 +77,7 @@ export const authenticate = async (req: Request, res: Response, next: NextFuncti
       exp,
     };
 
-    // Step 3: if token will expire soon (<5 min) → auto-refresh
+    // token will expire soon (<5 min): auto-refresh
     if (timeUntilExpiry < REFRESH_THRESHOLD && timeUntilExpiry > 0 && refreshToken) {
       console.log(`Token expiring in ${timeUntilExpiry}s → auto-refreshing...`);
 
@@ -128,7 +126,7 @@ export const authenticate = async (req: Request, res: Response, next: NextFuncti
   } catch (err: any) {
     console.log("Token validation failed → attempting refresh...");
 
-    // Step 4: Token expired → attempt full refresh
+    // Token expired → attempt full refresh
     if (refreshToken) {
       try {
         const { data, error } = await supabase.auth.refreshSession({ refresh_token: refreshToken });
@@ -193,8 +191,7 @@ export const authenticate = async (req: Request, res: Response, next: NextFuncti
         return;
       }
     }
-
-    // No refresh token → fully invalid
+    //invalid session if no token
     console.log("No refresh token → invalid session");
     res.status(403).json({ message: "Invalid token" });
     return;

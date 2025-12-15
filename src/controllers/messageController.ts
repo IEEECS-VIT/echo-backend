@@ -461,80 +461,88 @@ export const getDmThreadMessages = async (req: Request, res: Response): Promise<
 export const getDmMessages = async (req: Request, res: Response): Promise<void> => {
     try {
         const user_id = req.params.userId;
+        const offset = parseInt(req.query?.offset as string, 10) || 0;
+        const pageSize = 15;
 
-        if (!user_id || typeof user_id !== 'string') {
+        if (!user_id) {
             res.status(400).json({ error: 'Invalid user_id parameter.' });
             return;
         }
 
-        const { data: threads, error: threadError } = await supabase
+        const { data: threads } = await supabase
             .from('dm_threads')
             .select('id, user1_id, user2_id')
-            .or(`user1_id.eq.${user_id},user2_id.eq.${user_id}`) as { data: DmThread[]; error: any };
-
-        if (threadError) {
-            console.error('Error fetching user threads:', threadError);
-            res.status(500).json({ error: 'Failed to fetch user threads.' });
-            return;
-        }
+            .or(`user1_id.eq.${user_id},user2_id.eq.${user_id}`);
 
         if (!threads || threads.length === 0) {
             res.status(200).json({ threads: [] });
             return;
         }
 
-        const otherUserIds = threads.map(thread => 
-            thread.user1_id === user_id ? thread.user2_id : thread.user1_id
+        const threadIds = threads.map(t => t.id);
+        const otherUserIds = threads.map(t =>
+            t.user1_id === user_id ? t.user2_id : t.user1_id
         );
-        const threadIds = threads.map(thread => thread.id);
 
-        const { data: usersData, error: usersError } = await supabase
+        const { data: usersData } = await supabase
             .from('users')
             .select('id, username, avatar_url')
             .in('id', otherUserIds);
 
-        if (usersError) {
-            console.error('Error fetching user profiles:', usersError);
-            res.status(500).json({ error: 'Failed to fetch user profiles.' });
-            return;
+        const usersMap = new Map<string, any>();
+        if (usersData) {
+            usersData.forEach(u => usersMap.set(u.id, u));
         }
-        const usersMap = new Map(usersData.map(user => [user.id, user]));
 
-        const { data: allMessages, error: messagesError } = await supabase
+
+        // Total count for ALL threads messages combined
+        const { count } = await supabase
+            .from('dm_messages')
+            .select('*', { count: 'exact', head: true })
+            .in('thread_id', threadIds);
+
+        const totalCount = count || 0;
+
+        // Paginated fetch
+        const { data: paginatedMessages } = await supabase
             .from('dm_messages')
             .select('*')
             .in('thread_id', threadIds)
-            .order('timestamp', { ascending: true });
+            .order('timestamp', { ascending: false })
+            .range(offset, offset + pageSize - 1);
 
-        if (messagesError) {
-            console.error('Error fetching messages:', messagesError);
-            res.status(500).json({ error: 'Failed to fetch messages.' });
-            return;
+        const hasMore = offset + pageSize < totalCount;
+
+        // Group by thread for the frontend
+        const messagesByThread = new Map<string, any[]>();
+        
+        if (paginatedMessages) {
+            paginatedMessages.forEach(msg => {
+                const arr = messagesByThread.get(msg.thread_id) || [];
+                arr.push(msg);
+                messagesByThread.set(msg.thread_id, arr);
+            });
         }
 
-        const messagesByThread = new Map<string, any[]>();
-        allMessages.forEach(message => {
-            const threadMessages = messagesByThread.get(message.thread_id) || [];
-            threadMessages.push(message);
-            messagesByThread.set(message.thread_id, threadMessages);
-        });
-
-        const groupedMessages = threads.map(thread => {
-            const otherUserId = thread.user1_id === user_id ? thread.user2_id : thread.user1_id;
+        const groupedThreads = threads.map(t => {
+            const otherUserId = t.user1_id === user_id ? t.user2_id : t.user1_id;
             const otherUser = usersMap.get(otherUserId) || null;
-            const messages = messagesByThread.get(thread.id) || [];
-            const recentMessages = messages.slice(-15);
 
             return {
-                thread_id: thread.id,
-                messages: recentMessages,
+                thread_id: t.id,
+                messages: messagesByThread.get(t.id) || [],
                 other_user: otherUser
             };
         });
-        
-        res.status(200).json({ threads: groupedMessages });
+
+        res.status(200).json({
+            threads: groupedThreads,
+            hasMore,
+            totalCount
+        });
+
     } catch (err) {
-        console.error('Unexpected server error in getDmMessages:', err);
+        console.error(err);
         res.status(500).json({ error: 'Internal server error' });
     }
 };
