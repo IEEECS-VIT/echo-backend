@@ -2,12 +2,17 @@ import { Request, Response } from 'express';
 import {supabase,supabaseAdmin} from '../client/supabase'
 import jwt from 'jsonwebtoken';
 
+// Access token expires in 1 hour (matches Supabase JWT expiration)
+const ACCESS_TOKEN_MAX_AGE = 60 * 60; // 1 hour in seconds
+// Refresh token expires in 30 days
+const REFRESH_TOKEN_MAX_AGE = 60 * 60 * 24 * 30; // 30 days in seconds
+
 const cookieOptions = {
   httpOnly: true,
   secure: true,
   sameSite: 'none' as const,
   path: '/',
-  maxAge: 60 * 60 * 24 * 7,
+  maxAge: ACCESS_TOKEN_MAX_AGE,
 };
 
 
@@ -139,7 +144,7 @@ if (fetchError || !userDetails) {
     res.cookie('access_token', access_token, cookieOptions);
     res.cookie('refresh_token', refresh_token, {
       ...cookieOptions,
-      maxAge: 60 * 60 * 24 * 30,
+      maxAge: REFRESH_TOKEN_MAX_AGE,
     });
     console.log("Logged in the user.");
     res.status(200).json({ 
@@ -190,7 +195,7 @@ export const refreshToken = async (req: Request, res: Response): Promise <void> 
     res.cookie('access_token', access_token, cookieOptions);
     res.cookie('refresh_token', newRefreshToken, {
       ...cookieOptions,
-      maxAge: 60 * 60 * 24 * 30,
+      maxAge: REFRESH_TOKEN_MAX_AGE,
     });
     res.status(200).json({ 
       message: 'Token refreshed',
@@ -521,7 +526,7 @@ export const handleOAuthUser = async (req: Request, res: Response): Promise<void
       if (refresh_token) {
         res.cookie('refresh_token', refresh_token, {
           ...cookieOptions,
-          maxAge: 60 * 60 * 24 * 30,
+          maxAge: REFRESH_TOKEN_MAX_AGE,
         });
       }
       res.status(200).json({
