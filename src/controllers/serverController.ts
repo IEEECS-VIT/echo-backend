@@ -738,6 +738,90 @@ export const getServerMembers = async (req: AuthenticatedRequest, res: Response)
   }
 };
 
+// Get single server member with roles
+export const getServerMember = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+  try {
+    // console.log('getServerMember called with params:', req.params);
+    const { serverId, userId: targetUserId } = req.params;
+    const requesterId = req.user?.sub;
+
+    if (!requesterId) {
+      res.status(401).json({ error: 'Authentication required' });
+      return;
+    }
+
+    // console.log('ServerId:', serverId, 'TargetUserId:', targetUserId, 'RequesterId:', requesterId); 
+
+    if (!requesterId) {
+    // console.log('No requester ID'); // Add debug log
+    res.status(401).json({ error: 'Authentication required' });
+    return;
+  }
+
+    // Check if requester is a member of the server
+    const { data: memberData, error: memberError } = await supabase
+      .from('server_members')
+      .select('*')
+      .eq('server_id', serverId)
+      .eq('user_id', requesterId)
+      .single();
+
+    if (memberError || !memberData) {
+      // console.log('Requester not a member:', memberError);
+      res.status(403).json({ error: 'Access denied - not a member of this server' });
+      return;
+    }
+
+    // Get user details
+    const { data: userData, error: userError } = await supabase
+      .from('users')
+      .select('id, username, fullname, avatar_url, bio')
+      .eq('id', targetUserId)
+      .single();
+
+    if (userError || !userData) {
+      // console.log('User not found:', userError); // Add debug log
+      res.status(404).json({ error: 'User not found' });
+      return;
+    }
+
+    // Get user's roles in this server
+    const { data: userRoles, error: rolesError } = await supabase
+      .from('user_roles')
+      .select(`
+        roles!inner (
+          id,
+          name,
+          color,
+          server_id
+        )
+      `)
+      .eq('user_id', targetUserId)
+      .eq('roles.server_id', serverId);
+
+    if (rolesError) {
+      // console.error('Error fetching user roles:', rolesError);
+    }
+
+    // Format roles for response
+    const roles = (userRoles || []).map((ur: any) => ({
+      id: ur.roles.id,
+      name: ur.roles.name,
+      color: ur.roles.color
+    }));
+
+    res.status(200).json({
+      user: userData,
+      roles: roles
+    });
+
+  } catch (error) {
+    // console.error('Error getting server member:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+};
+
+// ...existing code...
 // Kick member from server
 export const kickMember = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   try {
