@@ -14,6 +14,7 @@ import {
   updateServer,
   getServerDetails,
   getServerMembers,
+  getServerMember,
   getServerMembersWithVoicePresence,
   kickMember,
   banMember,
@@ -46,6 +47,7 @@ router.get('/search/users', authenticate, searchUsersByUsername);
 
 // Server-specific routes with additional path segments (more specific)
 router.get('/:serverId/members', authenticate, getServerMembers);
+router.get('/:serverId/members/:userId', authenticate, getServerMember); 
 router.get('/:serverId/members/voice-presence', authenticate, getServerMembersWithVoicePresence);
 router.post('/:serverId/members', authenticate, addUserToServer);
 router.delete('/:serverId/members/:userId/kick', authenticate, kickMember);
