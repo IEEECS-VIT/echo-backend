@@ -1,0 +1,1931 @@
+{
+	"info": {
+		"_postman_id": "echo-backend-api-2026",
+		"name": "Echo Backend API",
+		"description": "Complete API collection for Echo chat application backend",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "echo-api-v1"
+	},
+	"item": [
+		{
+			"name": "1. Authentication",
+			"item": [
+				{
+					"name": "Test Route",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{BASE_URL}}/api/auth/test",
+							"host": ["{{BASE_URL}}"],
+							"path": ["api", "auth", "test"]
+						}
+					}
+				},
+				{
+					"name": "Register",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"if (pm.response.code === 201) {",
+									"    const response = pm.response.json();",
+									"    pm.environment.set(\"USER_ID\", response.user.id);",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"email\": \"user@example.com\",\n  \"password\": \"SecurePass123!\",\n  \"username\": \"john_doe\",\n  \"fullname\": \"John Doe\"\n}"
+						},
+						"url": {
+							"raw": "{{BASE_URL}}/api/auth/register",
+							"host": ["{{BASE_URL}}"],
+							"path": ["api", "auth", "register"]
+						}
+					}
+				},
+				{
+					"name": "Login",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"if (pm.response.code === 200) {",
+									"    const response = pm.response.json();",
+									"    pm.environment.set(\"ACCESS_TOKEN\", response.access_token);",
+									"    pm.environment.set(\"REFRESH_TOKEN\", response.refresh_token);",
+									"    pm.environment.set(\"USER_ID\", response.user.id);",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"email\": \"user@example.com\",\n  \"password\": \"SecurePass123!\"\n}"
+						},
+						"url": {
+							"raw": "{{BASE_URL}}/api/auth/login",
+							"host": ["{{BASE_URL}}"],
+							"path": ["api", "auth", "login"]
+						}
+					}
+				},
+				{
+					"name": "Logout",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{BASE_URL}}/api/auth/logout",
+							"host": ["{{BASE_URL}}"],
+							"path": ["api", "auth", "logout"]
+						}
+					}
+				},
+				{
+					"name": "Refresh Token",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"if (pm.response.code === 200) {",
+									"    const response = pm.response.json();",
+									"    pm.environment.set(\"ACCESS_TOKEN\", response.access_token);",
+									"    pm.environment.set(\"REFRESH_TOKEN\", response.refresh_token);",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"refresh_token\": \"{{REFRESH_TOKEN}}\"\n}"
+						},
+						"url": {
+							"raw": "{{BASE_URL}}/api/auth/refresh",
+							"host": ["{{BASE_URL}}"],
+							"path": ["api", "auth", "refresh"]
+						}
+					}
+				},
+				{
+					"name": "Forgot Password",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"email\": \"user@example.com\"\n}"
+						},
+						"url": {
+							"raw": "{{BASE_URL}}/api/auth/forgot-password",
+							"host": ["{{BASE_URL}}"],
+							"path": ["api", "auth", "forgot-password"]
+						}
+					}
+				},
+				{
+					"name": "Reset Password",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"token\": \"reset-token-here\",\n  \"newPassword\": \"NewSecurePass123!\"\n}"
+						},
+						"url": {
+							"raw": "{{BASE_URL}}/api/auth/reset-password",
+							"host": ["{{BASE_URL}}"],
+							"path": ["api", "auth", "reset-password"]
+						}
+					}
+				},
+				{
+					"name": "Change Password",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{ACCESS_TOKEN}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"currentPassword\": \"OldPass123!\",\n  \"newPassword\": \"NewPass123!\"\n}"
+						},
+						"url": {
+							"raw": "{{BASE_URL}}/api/auth/change-password",
+							"host": ["{{BASE_URL}}"],
+							"path": ["api", "auth", "change-password"]
+						}
+					}
+				},
+				{
+					"name": "OAuth Authorize",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{BASE_URL}}/api/auth/authorize",
+							"host": ["{{BASE_URL}}"],
+							"path": ["api", "auth", "authorize"]
+						}
+					}
+				},
+				{
+					"name": "OAuth User Handler",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"code\": \"oauth-code-here\",\n  \"provider\": \"google\"\n}"
+						},
+						"url": {
+							"raw": "{{BASE_URL}}/api/auth/oauth-user",
+							"host": ["{{BASE_URL}}"],
+							"path": ["api", "auth", "oauth-user"]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "2. Profile Management",
+			"item": [
+				{
+					"name": "Get Current User Profile",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{ACCESS_TOKEN}}"
+							}
+						],
+						"url": {
+							"raw": "{{BASE_URL}}/api/profile/getProfile",
+							"host": ["{{BASE_URL}}"],
+							"path": ["api", "profile", "getProfile"]
+						}
+					}
+				},
+				{
+					"name": "Get User Profile by ID",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{ACCESS_TOKEN}}"
+							}
+						],
+						"url": {
+							"raw": "{{BASE_URL}}/api/profile/{{USER_ID}}",
+							"host": ["{{BASE_URL}}"],
+							"path": ["api", "profile", "{{USER_ID}}"]
+						}
+					}
+				},
+				{
+					"name": "Update Profile",
+					"request": {
+						"method": "PATCH",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{ACCESS_TOKEN}}"
+							}
+						],
+						"body": {
+							"mode": "formdata",
+							"formdata": [
+								{
+									"key": "username",
+									"value": "updated_username",
+									"type": "text"
+								},
+								{
+									"key": "fullname",
+									"value": "Updated Name",
+									"type": "text"
+								},
+								{
+									"key": "bio",
+									"value": "Updated bio",
+									"type": "text"
+								},
+								{
+									"key": "avatar",
+									"type": "file",
+									"src": []
+								}
+							]
+						},
+						"url": {
+							"raw": "{{BASE_URL}}/api/profile/updateProfile",
+							"host": ["{{BASE_URL}}"],
+							"path": ["api", "profile", "updateProfile"]
+						}
+					}
+				},
+				{
+					"name": "Update Status",
+					"request": {
+						"method": "PATCH",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{ACCESS_TOKEN}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"status\": \"away\"\n}"
+						},
+						"url": {
+							"raw": "{{BASE_URL}}/api/profile/updatestatus",
+							"host": ["{{BASE_URL}}"],
+							"path": ["api", "profile", "updatestatus"]
+						}
+					}
+				},
+				{
+					"name": "Delete Profile",
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{ACCESS_TOKEN}}"
+							}
+						],
+						"url": {
+							"raw": "{{BASE_URL}}/api/profile/deleteProfile",
+							"host": ["{{BASE_URL}}"],
+							"path": ["api", "profile", "deleteProfile"]
+						}
+					}
+				},
+				{
+					"name": "Remove Avatar",
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{ACCESS_TOKEN}}"
+							}
+						],
+						"url": {
+							"raw": "{{BASE_URL}}/api/profile/removeAvatar",
+							"host": ["{{BASE_URL}}"],
+							"path": ["api", "profile", "removeAvatar"]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "3. Servers",
+			"item": [
+				{
+					"name": "Create Server",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"if (pm.response.code === 201) {",
+									"    const response = pm.response.json();",
+									"    pm.environment.set(\"SERVER_ID\", response.server.id);",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{ACCESS_TOKEN}}"
+							}
+						],
+						"body": {
+							"mode": "formdata",
+							"formdata": [
+								{
+									"key": "name",
+									"value": "My Awesome Server",
+									"type": "text"
+								},
+								{
+									"key": "description",
+									"value": "A great community",
+									"type": "text"
+								},
+								{
+									"key": "icon",
+									"type": "file",
+									"src": []
+								}
+							]
+						},
+						"url": {
+							"raw": "{{BASE_URL}}/api/newserver/create/",
+							"host": ["{{BASE_URL}}"],
+							"path": ["api", "newserver", "create", ""]
+						}
+					}
+				},
+				{
+					"name": "Get User's Servers",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{ACCESS_TOKEN}}"
+							}
+						],
+						"url": {
+							"raw": "{{BASE_URL}}/api/newserver/getServers/",
+							"host": ["{{BASE_URL}}"],
+							"path": ["api", "newserver", "getServers", ""]
+						}
+					}
+				},
+				{
+					"name": "Get Server Details",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{ACCESS_TOKEN}}"
+							}
+						],
+						"url": {
+							"raw": "{{BASE_URL}}/api/newserver/{{SERVER_ID}}",
+							"host": ["{{BASE_URL}}"],
+							"path": ["api", "newserver", "{{SERVER_ID}}"]
+						}
+					}
+				},
+				{
+					"name": "Update Server",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{ACCESS_TOKEN}}"
+							}
+						],
+						"body": {
+							"mode": "formdata",
+							"formdata": [
+								{
+									"key": "name",
+									"value": "Updated Server Name",
+									"type": "text"
+								},
+								{
+									"key": "description",
+									"value": "Updated description",
+									"type": "text"
+								},
+								{
+									"key": "icon",
+									"type": "file",
+									"src": []
+								}
+							]
+						},
+						"url": {
+							"raw": "{{BASE_URL}}/api/newserver/{{SERVER_ID}}",
+							"host": ["{{BASE_URL}}"],
+							"path": ["api", "newserver", "{{SERVER_ID}}"]
+						}
+					}
+				},
+				{
+					"name": "Delete Server",
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{ACCESS_TOKEN}}"
+							}
+						],
+						"url": {
+							"raw": "{{BASE_URL}}/api/newserver/{{SERVER_ID}}",
+							"host": ["{{BASE_URL}}"],
+							"path": ["api", "newserver", "{{SERVER_ID}}"]
+						}
+					}
+				},
+				{
+					"name": "Join Server",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{ACCESS_TOKEN}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"serverId\": \"{{SERVER_ID}}\"\n}"
+						},
+						"url": {
+							"raw": "{{BASE_URL}}/api/newserver/joinServer/",
+							"host": ["{{BASE_URL}}"],
+							"path": ["api", "newserver", "joinServer", ""]
+						}
+					}
+				},
+				{
+					"name": "Join with Invite",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{ACCESS_TOKEN}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"inviteCode\": \"ABC123XYZ\"\n}"
+						},
+						"url": {
+							"raw": "{{BASE_URL}}/api/newserver/joinwithinvite",
+							"host": ["{{BASE_URL}}"],
+							"path": ["api", "newserver", "joinwithinvite"]
+						}
+					}
+				},
+				{
+					"name": "Get Server Members",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{ACCESS_TOKEN}}"
+							}
+						],
+						"url": {
+							"raw": "{{BASE_URL}}/api/newserver/{{SERVER_ID}}/members",
+							"host": ["{{BASE_URL}}"],
+							"path": ["api", "newserver", "{{SERVER_ID}}", "members"]
+						}
+					}
+				},
+				{
+					"name": "Get Server Member Details",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{ACCESS_TOKEN}}"
+							}
+						],
+						"url": {
+							"raw": "{{BASE_URL}}/api/newserver/{{SERVER_ID}}/members/{{USER_ID}}",
+							"host": ["{{BASE_URL}}"],
+							"path": ["api", "newserver", "{{SERVER_ID}}", "members", "{{USER_ID}}"]
+						}
+					}
+				},
+				{
+					"name": "Get Members with Voice Presence",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{ACCESS_TOKEN}}"
+							}
+						],
+						"url": {
+							"raw": "{{BASE_URL}}/api/newserver/{{SERVER_ID}}/members/voice-presence",
+							"host": ["{{BASE_URL}}"],
+							"path": ["api", "newserver", "{{SERVER_ID}}", "members", "voice-presence"]
+						}
+					}
+				},
+				{
+					"name": "Add User to Server",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{ACCESS_TOKEN}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"userId\": \"user-uuid-here\"\n}"
+						},
+						"url": {
+							"raw": "{{BASE_URL}}/api/newserver/{{SERVER_ID}}/members",
+							"host": ["{{BASE_URL}}"],
+							"path": ["api", "newserver", "{{SERVER_ID}}", "members"]
+						}
+					}
+				},
+				{
+					"name": "Kick Member",
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{ACCESS_TOKEN}}"
+							}
+						],
+						"url": {
+							"raw": "{{BASE_URL}}/api/newserver/{{SERVER_ID}}/members/{{USER_ID}}/kick",
+							"host": ["{{BASE_URL}}"],
+							"path": ["api", "newserver", "{{SERVER_ID}}", "members", "{{USER_ID}}", "kick"]
+						}
+					}
+				},
+				{
+					"name": "Ban Member",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{ACCESS_TOKEN}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"reason\": \"Violating server rules\"\n}"
+						},
+						"url": {
+							"raw": "{{BASE_URL}}/api/newserver/{{SERVER_ID}}/members/{{USER_ID}}/ban",
+							"host": ["{{BASE_URL}}"],
+							"path": ["api", "newserver", "{{SERVER_ID}}", "members", "{{USER_ID}}", "ban"]
+						}
+					}
+				},
+				{
+					"name": "Unban Member",
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{ACCESS_TOKEN}}"
+							}
+						],
+						"url": {
+							"raw": "{{BASE_URL}}/api/newserver/{{SERVER_ID}}/members/{{USER_ID}}/unban",
+							"host": ["{{BASE_URL}}"],
+							"path": ["api", "newserver", "{{SERVER_ID}}", "members", "{{USER_ID}}", "unban"]
+						}
+					}
+				},
+				{
+					"name": "Get Banned Users",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{ACCESS_TOKEN}}"
+							}
+						],
+						"url": {
+							"raw": "{{BASE_URL}}/api/newserver/{{SERVER_ID}}/bans",
+							"host": ["{{BASE_URL}}"],
+							"path": ["api", "newserver", "{{SERVER_ID}}", "bans"]
+						}
+					}
+				},
+				{
+					"name": "Leave Server",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{ACCESS_TOKEN}}"
+							}
+						],
+						"url": {
+							"raw": "{{BASE_URL}}/api/newserver/{{SERVER_ID}}/leave",
+							"host": ["{{BASE_URL}}"],
+							"path": ["api", "newserver", "{{SERVER_ID}}", "leave"]
+						}
+					}
+				},
+				{
+					"name": "Transfer Ownership",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{ACCESS_TOKEN}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"newOwnerId\": \"new-owner-uuid\"\n}"
+						},
+						"url": {
+							"raw": "{{BASE_URL}}/api/newserver/{{SERVER_ID}}/transfer-ownership",
+							"host": ["{{BASE_URL}}"],
+							"path": ["api", "newserver", "{{SERVER_ID}}", "transfer-ownership"]
+						}
+					}
+				},
+				{
+					"name": "Get Server Invites",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{ACCESS_TOKEN}}"
+							}
+						],
+						"url": {
+							"raw": "{{BASE_URL}}/api/newserver/{{SERVER_ID}}/invites",
+							"host": ["{{BASE_URL}}"],
+							"path": ["api", "newserver", "{{SERVER_ID}}", "invites"]
+						}
+					}
+				},
+				{
+					"name": "Create Server Invite",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{ACCESS_TOKEN}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"maxUses\": 10,\n  \"expiresIn\": 86400\n}"
+						},
+						"url": {
+							"raw": "{{BASE_URL}}/api/newserver/{{SERVER_ID}}/invites",
+							"host": ["{{BASE_URL}}"],
+							"path": ["api", "newserver", "{{SERVER_ID}}", "invites"]
+						}
+					}
+				},
+				{
+					"name": "Delete Invite",
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{ACCESS_TOKEN}}"
+							}
+						],
+						"url": {
+							"raw": "{{BASE_URL}}/api/newserver/{{SERVER_ID}}/invites/{{INVITE_ID}}",
+							"host": ["{{BASE_URL}}"],
+							"path": ["api", "newserver", "{{SERVER_ID}}", "invites", "{{INVITE_ID}}"]
+						}
+					}
+				},
+				{
+					"name": "Search Users",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{ACCESS_TOKEN}}"
+							}
+						],
+						"url": {
+							"raw": "{{BASE_URL}}/api/newserver/search/users?q=john",
+							"host": ["{{BASE_URL}}"],
+							"path": ["api", "newserver", "search", "users"],
+							"query": [
+								{
+									"key": "q",
+									"value": "john"
+								}
+							]
+						}
+					}
+				},
+				{
+					"name": "Get Role Members",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{ACCESS_TOKEN}}"
+							}
+						],
+						"url": {
+							"raw": "{{BASE_URL}}/api/newserver/{{SERVER_ID}}/roles/Admin/members",
+							"host": ["{{BASE_URL}}"],
+							"path": ["api", "newserver", "{{SERVER_ID}}", "roles", "Admin", "members"]
+						}
+					}
+				},
+				{
+					"name": "Get Server Roles",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{ACCESS_TOKEN}}"
+							}
+						],
+						"url": {
+							"raw": "{{BASE_URL}}/api/newserver/{{SERVER_ID}}/roles",
+							"host": ["{{BASE_URL}}"],
+							"path": ["api", "newserver", "{{SERVER_ID}}", "roles"]
+						}
+					}
+				},
+				{
+					"name": "Invite to Server",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"serverId\": \"{{SERVER_ID}}\",\n  \"email\": \"friend@example.com\"\n}"
+						},
+						"url": {
+							"raw": "{{BASE_URL}}/api/newserver/invite",
+							"host": ["{{BASE_URL}}"],
+							"path": ["api", "newserver", "invite"]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "4. Channels",
+			"item": [
+				{
+					"name": "Create Channel",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"if (pm.response.code === 201) {",
+									"    const response = pm.response.json();",
+									"    pm.environment.set(\"CHANNEL_ID\", response.channel.id);",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{ACCESS_TOKEN}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"name\": \"general\",\n  \"type\": \"text\",\n  \"description\": \"General discussion\"\n}"
+						},
+						"url": {
+							"raw": "{{BASE_URL}}/api/channel/{{SERVER_ID}}/NewChannel",
+							"host": ["{{BASE_URL}}"],
+							"path": ["api", "channel", "{{SERVER_ID}}", "NewChannel"]
+						}
+					}
+				},
+				{
+					"name": "Get Server Channels",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{ACCESS_TOKEN}}"
+							}
+						],
+						"url": {
+							"raw": "{{BASE_URL}}/api/channel/{{SERVER_ID}}/getChannels",
+							"host": ["{{BASE_URL}}"],
+							"path": ["api", "channel", "{{SERVER_ID}}", "getChannels"]
+						}
+					}
+				},
+				{
+					"name": "Join Channel",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{ACCESS_TOKEN}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"channelId\": \"{{CHANNEL_ID}}\"\n}"
+						},
+						"url": {
+							"raw": "{{BASE_URL}}/api/channel/{{SERVER_ID}}/joinChannel",
+							"host": ["{{BASE_URL}}"],
+							"path": ["api", "channel", "{{SERVER_ID}}", "joinChannel"]
+						}
+					}
+				},
+				{
+					"name": "Get Channels with Access",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{ACCESS_TOKEN}}"
+							}
+						],
+						"url": {
+							"raw": "{{BASE_URL}}/api/channel/{{SERVER_ID}}/channels-with-access",
+							"host": ["{{BASE_URL}}"],
+							"path": ["api", "channel", "{{SERVER_ID}}", "channels-with-access"]
+						}
+					}
+				},
+				{
+					"name": "Set Channel Role Access",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{ACCESS_TOKEN}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"roleId\": \"role-uuid-here\",\n  \"canView\": true,\n  \"canSend\": true\n}"
+						},
+						"url": {
+							"raw": "{{BASE_URL}}/api/channel/{{CHANNEL_ID}}/role-access",
+							"host": ["{{BASE_URL}}"],
+							"path": ["api", "channel", "{{CHANNEL_ID}}", "role-access"]
+						}
+					}
+				},
+				{
+					"name": "Get Channel Role Access",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{ACCESS_TOKEN}}"
+							}
+						],
+						"url": {
+							"raw": "{{BASE_URL}}/api/channel/{{CHANNEL_ID}}/role-access",
+							"host": ["{{BASE_URL}}"],
+							"path": ["api", "channel", "{{CHANNEL_ID}}", "role-access"]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "5. Messages",
+			"item": [
+				{
+					"name": "Send Channel Message",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{ACCESS_TOKEN}}"
+							}
+						],
+						"body": {
+							"mode": "formdata",
+							"formdata": [
+								{
+									"key": "content",
+									"value": "Hello world!",
+									"type": "text"
+								},
+								{
+									"key": "channel_id",
+									"value": "{{CHANNEL_ID}}",
+									"type": "text"
+								},
+								{
+									"key": "sender_id",
+									"value": "{{USER_ID}}",
+									"type": "text"
+								},
+								{
+									"key": "reply_to",
+									"value": "",
+									"type": "text",
+									"disabled": true
+								},
+								{
+									"key": "image",
+									"type": "file",
+									"src": [],
+									"disabled": true
+								},
+								{
+									"key": "file",
+									"type": "file",
+									"src": [],
+									"disabled": true
+								}
+							]
+						},
+						"url": {
+							"raw": "{{BASE_URL}}/api/message/upload",
+							"host": ["{{BASE_URL}}"],
+							"path": ["api", "message", "upload"]
+						}
+					}
+				},
+				{
+					"name": "Send DM Message",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{ACCESS_TOKEN}}"
+							}
+						],
+						"body": {
+							"mode": "formdata",
+							"formdata": [
+								{
+									"key": "content",
+									"value": "Hey there!",
+									"type": "text"
+								},
+								{
+									"key": "sender_id",
+									"value": "{{USER_ID}}",
+									"type": "text"
+								},
+								{
+									"key": "receiver_id",
+									"value": "receiver-uuid-here",
+									"type": "text"
+								},
+								{
+									"key": "reply_to",
+									"value": "",
+									"type": "text",
+									"disabled": true
+								},
+								{
+									"key": "image",
+									"type": "file",
+									"src": [],
+									"disabled": true
+								},
+								{
+									"key": "file",
+									"type": "file",
+									"src": [],
+									"disabled": true
+								}
+							]
+						},
+						"url": {
+							"raw": "{{BASE_URL}}/api/message/upload_dm",
+							"host": ["{{BASE_URL}}"],
+							"path": ["api", "message", "upload_dm"]
+						}
+					}
+				},
+				{
+					"name": "Fetch Channel Messages",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{ACCESS_TOKEN}}"
+							}
+						],
+						"url": {
+							"raw": "{{BASE_URL}}/api/message/fetch?channel_id={{CHANNEL_ID}}&offset=0",
+							"host": ["{{BASE_URL}}"],
+							"path": ["api", "message", "fetch"],
+							"query": [
+								{
+									"key": "channel_id",
+									"value": "{{CHANNEL_ID}}"
+								},
+								{
+									"key": "offset",
+									"value": "0"
+								}
+							]
+						}
+					}
+				},
+				{
+					"name": "Get DM Thread Messages",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{ACCESS_TOKEN}}"
+							}
+						],
+						"url": {
+							"raw": "{{BASE_URL}}/api/message/dm/{{THREAD_ID}}?offset=0",
+							"host": ["{{BASE_URL}}"],
+							"path": ["api", "message", "dm", "{{THREAD_ID}}"],
+							"query": [
+								{
+									"key": "offset",
+									"value": "0"
+								}
+							]
+						}
+					}
+				},
+				{
+					"name": "Get User DMs",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{ACCESS_TOKEN}}"
+							}
+						],
+						"url": {
+							"raw": "{{BASE_URL}}/api/message/{{USER_ID}}/getDms?offset=0",
+							"host": ["{{BASE_URL}}"],
+							"path": ["api", "message", "{{USER_ID}}", "getDms"],
+							"query": [
+								{
+									"key": "offset",
+									"value": "0"
+								}
+							]
+						}
+					}
+				},
+				{
+					"name": "Get Unread Message Counts",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{ACCESS_TOKEN}}"
+							}
+						],
+						"url": {
+							"raw": "{{BASE_URL}}/api/message/{{USER_ID}}/unread-counts",
+							"host": ["{{BASE_URL}}"],
+							"path": ["api", "message", "{{USER_ID}}", "unread-counts"]
+						}
+					}
+				},
+				{
+					"name": "Mark Thread as Read",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{ACCESS_TOKEN}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"userId\": \"{{USER_ID}}\"\n}"
+						},
+						"url": {
+							"raw": "{{BASE_URL}}/api/message/thread/{{THREAD_ID}}/mark-read",
+							"host": ["{{BASE_URL}}"],
+							"path": ["api", "message", "thread", "{{THREAD_ID}}", "mark-read"]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "6. Roles",
+			"item": [
+				{
+					"name": "Get All Roles",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{ACCESS_TOKEN}}"
+							}
+						],
+						"url": {
+							"raw": "{{BASE_URL}}/api/roles/{{SERVER_ID}}/all",
+							"host": ["{{BASE_URL}}"],
+							"path": ["api", "roles", "{{SERVER_ID}}", "all"]
+						}
+					}
+				},
+				{
+					"name": "Get User's Roles",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{ACCESS_TOKEN}}"
+							}
+						],
+						"url": {
+							"raw": "{{BASE_URL}}/api/roles/{{SERVER_ID}}/my-roles",
+							"host": ["{{BASE_URL}}"],
+							"path": ["api", "roles", "{{SERVER_ID}}", "my-roles"]
+						}
+					}
+				},
+				{
+					"name": "Get Self-Assignable Roles",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{ACCESS_TOKEN}}"
+							}
+						],
+						"url": {
+							"raw": "{{BASE_URL}}/api/roles/{{SERVER_ID}}/self-assignable",
+							"host": ["{{BASE_URL}}"],
+							"path": ["api", "roles", "{{SERVER_ID}}", "self-assignable"]
+						}
+					}
+				},
+				{
+					"name": "Self-Assign Role",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{ACCESS_TOKEN}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"roleId\": \"role-uuid-here\"\n}"
+						},
+						"url": {
+							"raw": "{{BASE_URL}}/api/roles/{{SERVER_ID}}/self-assign",
+							"host": ["{{BASE_URL}}"],
+							"path": ["api", "roles", "{{SERVER_ID}}", "self-assign"]
+						}
+					}
+				},
+				{
+					"name": "Self-Unassign Role",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{ACCESS_TOKEN}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"roleId\": \"role-uuid-here\"\n}"
+						},
+						"url": {
+							"raw": "{{BASE_URL}}/api/roles/{{SERVER_ID}}/self-unassign",
+							"host": ["{{BASE_URL}}"],
+							"path": ["api", "roles", "{{SERVER_ID}}", "self-unassign"]
+						}
+					}
+				},
+				{
+					"name": "Create Role",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{ACCESS_TOKEN}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"name\": \"Moderator\",\n  \"color\": \"#00FF00\",\n  \"permissions\": [\"KICK_MEMBERS\", \"BAN_MEMBERS\"],\n  \"position\": 2,\n  \"is_self_assignable\": false\n}"
+						},
+						"url": {
+							"raw": "{{BASE_URL}}/api/roles/{{SERVER_ID}}/create",
+							"host": ["{{BASE_URL}}"],
+							"path": ["api", "roles", "{{SERVER_ID}}", "create"]
+						}
+					}
+				},
+				{
+					"name": "Update Role",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{ACCESS_TOKEN}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"name\": \"Senior Moderator\",\n  \"color\": \"#00AA00\",\n  \"permissions\": [\"KICK_MEMBERS\", \"BAN_MEMBERS\", \"MANAGE_MESSAGES\"]\n}"
+						},
+						"url": {
+							"raw": "{{BASE_URL}}/api/roles/{{SERVER_ID}}/{{ROLE_ID}}/update",
+							"host": ["{{BASE_URL}}"],
+							"path": ["api", "roles", "{{SERVER_ID}}", "{{ROLE_ID}}", "update"]
+						}
+					}
+				},
+				{
+					"name": "Delete Role",
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{ACCESS_TOKEN}}"
+							}
+						],
+						"url": {
+							"raw": "{{BASE_URL}}/api/roles/{{SERVER_ID}}/{{ROLE_ID}}/delete",
+							"host": ["{{BASE_URL}}"],
+							"path": ["api", "roles", "{{SERVER_ID}}", "{{ROLE_ID}}", "delete"]
+						}
+					}
+				},
+				{
+					"name": "Assign Role to User",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{ACCESS_TOKEN}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"userId\": \"user-uuid-here\",\n  \"roleId\": \"role-uuid-here\"\n}"
+						},
+						"url": {
+							"raw": "{{BASE_URL}}/api/roles/{{SERVER_ID}}/assign-to-user",
+							"host": ["{{BASE_URL}}"],
+							"path": ["api", "roles", "{{SERVER_ID}}", "assign-to-user"]
+						}
+					}
+				},
+				{
+					"name": "Remove Role from User",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{ACCESS_TOKEN}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"userId\": \"user-uuid-here\",\n  \"roleId\": \"role-uuid-here\"\n}"
+						},
+						"url": {
+							"raw": "{{BASE_URL}}/api/roles/{{SERVER_ID}}/remove-from-user",
+							"host": ["{{BASE_URL}}"],
+							"path": ["api", "roles", "{{SERVER_ID}}", "remove-from-user"]
+						}
+					}
+				},
+				{
+					"name": "Get Role Categories",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{ACCESS_TOKEN}}"
+							}
+						],
+						"url": {
+							"raw": "{{BASE_URL}}/api/roles/{{SERVER_ID}}/categories",
+							"host": ["{{BASE_URL}}"],
+							"path": ["api", "roles", "{{SERVER_ID}}", "categories"]
+						}
+					}
+				},
+				{
+					"name": "Create Role Category",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{ACCESS_TOKEN}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"name\": \"Gaming Roles\",\n  \"position\": 1\n}"
+						},
+						"url": {
+							"raw": "{{BASE_URL}}/api/roles/{{SERVER_ID}}/categories",
+							"host": ["{{BASE_URL}}"],
+							"path": ["api", "roles", "{{SERVER_ID}}", "categories"]
+						}
+					}
+				},
+				{
+					"name": "Update Role Category",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{ACCESS_TOKEN}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"name\": \"Elite Gaming Roles\",\n  \"position\": 2\n}"
+						},
+						"url": {
+							"raw": "{{BASE_URL}}/api/roles/{{SERVER_ID}}/categories/{{CATEGORY_ID}}",
+							"host": ["{{BASE_URL}}"],
+							"path": ["api", "roles", "{{SERVER_ID}}", "categories", "{{CATEGORY_ID}}"]
+						}
+					}
+				},
+				{
+					"name": "Delete Role Category",
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{ACCESS_TOKEN}}"
+							}
+						],
+						"url": {
+							"raw": "{{BASE_URL}}/api/roles/{{SERVER_ID}}/categories/{{CATEGORY_ID}}",
+							"host": ["{{BASE_URL}}"],
+							"path": ["api", "roles", "{{SERVER_ID}}", "categories", "{{CATEGORY_ID}}"]
+						}
+					}
+				},
+				{
+					"name": "Get Role Details with Permissions",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{BASE_URL}}/api/roles/{{SERVER_ID}}/view",
+							"host": ["{{BASE_URL}}"],
+							"path": ["api", "roles", "{{SERVER_ID}}", "view"]
+						}
+					}
+				},
+				{
+					"name": "Get Available Permissions",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{BASE_URL}}/api/roles/permissions",
+							"host": ["{{BASE_URL}}"],
+							"path": ["api", "roles", "permissions"]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "7. Friends",
+			"item": [
+				{
+					"name": "Add Friend",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{ACCESS_TOKEN}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"friendUsername\": \"jane_doe\"\n}"
+						},
+						"url": {
+							"raw": "{{BASE_URL}}/api/friends/add_friend",
+							"host": ["{{BASE_URL}}"],
+							"path": ["api", "friends", "add_friend"]
+						}
+					}
+				},
+				{
+					"name": "Get Friend Requests",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{ACCESS_TOKEN}}"
+							}
+						],
+						"url": {
+							"raw": "{{BASE_URL}}/api/friends/friend_requests",
+							"host": ["{{BASE_URL}}"],
+							"path": ["api", "friends", "friend_requests"]
+						}
+					}
+				},
+				{
+					"name": "Respond to Friend Request",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{ACCESS_TOKEN}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"requestId\": \"request-uuid-here\",\n  \"action\": \"accept\"\n}"
+						},
+						"url": {
+							"raw": "{{BASE_URL}}/api/friends/request",
+							"host": ["{{BASE_URL}}"],
+							"path": ["api", "friends", "request"]
+						}
+					}
+				},
+				{
+					"name": "Get All Friends",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{ACCESS_TOKEN}}"
+							}
+						],
+						"url": {
+							"raw": "{{BASE_URL}}/api/friends/all",
+							"host": ["{{BASE_URL}}"],
+							"path": ["api", "friends", "all"]
+						}
+					}
+				},
+				{
+					"name": "Search Friends",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{ACCESS_TOKEN}}"
+							}
+						],
+						"url": {
+							"raw": "{{BASE_URL}}/api/friends/search?q=jane",
+							"host": ["{{BASE_URL}}"],
+							"path": ["api", "friends", "search"],
+							"query": [
+								{
+									"key": "q",
+									"value": "jane"
+								}
+							]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "8. Mentions",
+			"item": [
+				{
+					"name": "Get User Mentions",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{ACCESS_TOKEN}}"
+							}
+						],
+						"url": {
+							"raw": "{{BASE_URL}}/api/mentions/?page=1&limit=20&unreadOnly=false",
+							"host": ["{{BASE_URL}}"],
+							"path": ["api", "mentions", ""],
+							"query": [
+								{
+									"key": "page",
+									"value": "1"
+								},
+								{
+									"key": "limit",
+									"value": "20"
+								},
+								{
+									"key": "unreadOnly",
+									"value": "false"
+								}
+							]
+						}
+					}
+				},
+				{
+					"name": "Mark Mention as Read",
+					"request": {
+						"method": "PATCH",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{ACCESS_TOKEN}}"
+							}
+						],
+						"url": {
+							"raw": "{{BASE_URL}}/api/mentions/{{MENTION_ID}}/read",
+							"host": ["{{BASE_URL}}"],
+							"path": ["api", "mentions", "{{MENTION_ID}}", "read"]
+						}
+					}
+				},
+				{
+					"name": "Mark All Mentions as Read",
+					"request": {
+						"method": "PATCH",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{ACCESS_TOKEN}}"
+							}
+						],
+						"url": {
+							"raw": "{{BASE_URL}}/api/mentions/mark-all-read",
+							"host": ["{{BASE_URL}}"],
+							"path": ["api", "mentions", "mark-all-read"]
+						}
+					}
+				},
+				{
+					"name": "Search Mentionable Users/Roles",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{ACCESS_TOKEN}}"
+							}
+						],
+						"url": {
+							"raw": "{{BASE_URL}}/api/mentions/search/{{SERVER_ID}}?q=john&type=all",
+							"host": ["{{BASE_URL}}"],
+							"path": ["api", "mentions", "search", "{{SERVER_ID}}"],
+							"query": [
+								{
+									"key": "q",
+									"value": "john"
+								},
+								{
+									"key": "type",
+									"value": "all"
+								}
+							]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "9. Contact",
+			"item": [
+				{
+					"name": "Submit Contact Form",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"name\": \"John Doe\",\n  \"email\": \"john@example.com\",\n  \"subject\": \"Question about features\",\n  \"message\": \"I would like to know more about...\"\n}"
+						},
+						"url": {
+							"raw": "{{BASE_URL}}/api/contact/contact",
+							"host": ["{{BASE_URL}}"],
+							"path": ["api", "contact", "contact"]
+						}
+					}
+				}
+			]
+		}
+	],
+	"event": [
+		{
+			"listen": "prerequest",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					""
+				]
+			}
+		},
+		{
+			"listen": "test",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					""
+				]
+			}
+		}
+	],
+	"variable": [
+		{
+			"key": "BASE_URL",
+			"value": "http://localhost:5000",
+			"type": "string"
+		},
+		{
+			"key": "ACCESS_TOKEN",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "REFRESH_TOKEN",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "USER_ID",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "SERVER_ID",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "CHANNEL_ID",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "THREAD_ID",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "MENTION_ID",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "ROLE_ID",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "CATEGORY_ID",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "INVITE_ID",
+			"value": "",
+			"type": "string"
+		}
+	]
+}
