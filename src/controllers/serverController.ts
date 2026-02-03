@@ -1011,14 +1011,6 @@ export const banMember = async (req: AuthenticatedRequest, res: Response): Promi
       .eq('id', serverId)
       .single();
 
-      await supabase.from('server_bans').insert({
-  server_id: serverId,
-  user_id: targetUserId,
-  banned_by: userId,
-  banned_at: new Date().toISOString()
-});
-
-
     if (serverError || !serverData) {
       res.status(404).json({ error: 'Server not found' });
       return;
