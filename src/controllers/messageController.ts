@@ -383,67 +383,57 @@ export const channelmessagePostController = async (req:AuthenticatedRequest, res
 export const messageGetController = async (req:Request, res:Response):Promise<any>=>{
     try{
         const channel_id  = req.query?.channel_id as string;
-        const offset = parseInt(req.query?.offset as string, 10) || 0; // Pagination offset
-        const pageSize = 15; // Number of messages per request
+        const offset = parseInt(req.query?.offset as string, 10) || 0;
+        const pageSize = 15;
 
         if(!channel_id ){
             return res.status(400).json({msg:'Invalid channelId received'});
         }
 
-        // Get total count for hasMore calculation
-        const { count, error: countError } = await supabase
-            .from('messages')
-            .select('*', { count: 'exact', head: true })
-            .eq('channel_id', channel_id);
-
-        if(countError){
-            console.error('Error counting messages:', countError);
-        }
-
+        // OPTIMIZED: Single query with JOINs - no separate COUNT or user lookup queries
         const { data, error } = await supabase
           .from('messages')
           .select(`
             *,
+            sender:users!sender_id (
+              id,
+              username,
+              avatar_url
+            ),
             reply_to_message:reply_to (
-              id, content, sender_id, users (username, avatar_url)
+              id,
+              content,
+              sender_id,
+              users (username, avatar_url)
             )
           `)
           .eq('channel_id', channel_id)
           .order('timestamp', { ascending: false })
-          .range(offset, offset + pageSize - 1); // Apply pagination here
+          .range(offset, offset + pageSize); // Fetch pageSize + 1 to check hasMore
 
         if(error){
             console.error('Error fetching messages:', error);
             return res.status(500).json({msg:'Server Error'});
         }
 
-        const senderIds = data ? Array.from(new Set(data.map((msg:any) => msg.sender_id))) : [];
-        let usersMap = new Map();
-        if(senderIds.length > 0){
-            const { data: usersData, error: usersError } = await supabase
-                .from('users')
-                .select('id, username, avatar_url') // <-- fetch avatar_url for sender
-                .in('id', senderIds);
-            if(usersError){
-                console.error('Error fetching user names:', usersError);
-            } else if(usersData) {
-                usersMap = new Map(usersData.map((user:any) => [user.id, { username: user.username, avatar_url: user.avatar_url }]));
-            }
-        }
+        // Determine hasMore by checking if we got more than pageSize results
+        const hasMore = data ? data.length > pageSize : false;
+        
+        // Trim to actual page size
+        const pageData = data ? data.slice(0, pageSize) : [];
 
-        const messagesWithUsernames = data ? data.map((msg:any) => ({
+        // Transform data to include username and avatar at top level
+        const messagesWithUsernames = pageData.map((msg: any) => ({
             ...msg,
-            username: usersMap.get(msg.sender_id)?.username || null,
-            sender_avatar_url: usersMap.get(msg.sender_id)?.avatar_url || null
-        })) : [];
-
-        const totalCount = count || 0;
-        const hasMore = offset + pageSize < totalCount;
+            username: msg.sender?.username || null,
+            sender_avatar_url: msg.sender?.avatar_url || null,
+            // Keep sender object for compatibility but flatten the useful fields
+        }));
 
         return res.status(200).json({
             data: messagesWithUsernames,
-            hasMore,
-            totalCount
+            hasMore
+            // Removed totalCount - not needed for infinite scroll
         });
     }
     catch(e:any){
@@ -468,36 +458,39 @@ export const getDmThreadMessages = async (req: Request, res: Response): Promise<
             return res.status(400).json({ error: 'Thread ID is required.' });
         }
 
-        // Get total count for hasMore calculation
-        const { count, error: countError } = await supabase
-            .from('dm_messages')
-            .select('*', { count: 'exact', head: true })
-            .eq('thread_id', threadId);
-
-        if (countError) {
-            console.error('Error counting DM messages:', countError);
-        }
-
-        // Fetch messages with pagination (descending order to get newest first, then reverse on frontend)
+        // OPTIMIZED: Single query with sender info, no separate COUNT query
         const { data, error } = await supabase
             .from('dm_messages')
-            .select('*')
+            .select(`
+                *,
+                sender:users!sender_id (
+                    id,
+                    username,
+                    avatar_url
+                )
+            `)
             .eq('thread_id', threadId)
             .order('timestamp', { ascending: false })
-            .range(offset, offset + pageSize - 1);
+            .range(offset, offset + pageSize); // Fetch pageSize + 1 to check hasMore
 
         if (error) {
             console.error('Error fetching DM thread messages:', error);
             return res.status(500).json({ error: 'Failed to fetch messages.' });
         }
 
-        const totalCount = count || 0;
-        const hasMore = offset + pageSize < totalCount;
+        // Determine hasMore by checking if we got more than pageSize results
+        const hasMore = data ? data.length > pageSize : false;
+        
+        // Trim to actual page size and flatten sender info
+        const pageData = (data || []).slice(0, pageSize).map((msg: any) => ({
+            ...msg,
+            username: msg.sender?.username || null,
+            sender_avatar_url: msg.sender?.avatar_url || null,
+        }));
 
         return res.status(200).json({
-            data: data || [],
-            hasMore,
-            totalCount
+            data: pageData,
+            hasMore
         });
     } catch (err) {
         console.error('Unexpected error in getDmThreadMessages:', err);
