@@ -355,11 +355,16 @@ export const channelmessagePostController = async (req:AuthenticatedRequest, res
             }
         }
 
-        // Fetch the full message with reply_to_message join for socket emit
+        // Fetch the full message with sender and reply_to_message join for socket emit
         const { data: fullMessage, error: joinError } = await supabase
           .from('messages')
           .select(`
             *,
+            sender:users!sender_id (
+              id,
+              username,
+              avatar_url
+            ),
             reply_to_message:reply_to (
               id, content, sender_id, users (username, avatar_url)
             )
@@ -369,10 +374,18 @@ export const channelmessagePostController = async (req:AuthenticatedRequest, res
         if (joinError) {
           console.error('Error fetching joined message for socket:', joinError);
         }
+
+        // Flatten sender info for frontend consistency
+        const enrichedMessage = fullMessage ? {
+          ...fullMessage,
+          username: fullMessage.sender?.username || null,
+          sender_avatar_url: fullMessage.sender?.avatar_url || null,
+        } : savedMessage;
+
         const io = getIO();
-        io.to(channel_id).emit("new_message", fullMessage || savedMessage);
+        io.to(channel_id).emit("new_message", enrichedMessage);
         
-        return res.status(200).json(fullMessage || savedMessage);
+        return res.status(200).json(enrichedMessage);
 
     } catch(error:any) {
         console.error(error);

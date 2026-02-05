@@ -18,7 +18,7 @@ export const screation = async (req: AuthenticatedRequest, res: Response): Promi
   }
   if (!name) {
     res.status(400).json({ error: 'Server name is required' });
-    return   
+    return
   }
   if (!email_Id) {
     res.status(401).json({ error: 'Authentication error: User email not found.' });
