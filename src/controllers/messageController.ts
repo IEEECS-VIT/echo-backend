@@ -236,7 +236,7 @@ export const dmMessagePostController = async (req: AuthenticatedRequest, res: Re
         }
         const senderSocketId = userSocketMap.get(sender_id);
         if (senderSocketId) {
-            io.to(senderSocketId).emit("dm_sent_confirmation");
+            io.to(senderSocketId).emit("dm_confirmed",{ ...(fullMessage || savedMessage) })
         }
 
         return res.status(200).json({ message: savedMessage });
