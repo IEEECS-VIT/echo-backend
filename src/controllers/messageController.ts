@@ -35,7 +35,7 @@ const IMAGE_MIME_SET = new Set([
     'image/jpeg','image/png','image/gif','image/webp','image/bmp','image/svg+xml'
 ]);
 
-const ALLOWED_FILE_MIME: Record<string,string> = {
+const KNOWN_FILE_MIME_EXT: Record<string,string> = {
     // Images
     'image/jpeg':'jpg','image/png':'png','image/gif':'gif','image/webp':'webp','image/bmp':'bmp','image/svg+xml':'svg',
     // Text / docs
@@ -48,7 +48,19 @@ const ALLOWED_FILE_MIME: Record<string,string> = {
 };
 
 function extFromMime(mime: string): string | null {
-    return ALLOWED_FILE_MIME[mime] || null;
+    const knownExt = KNOWN_FILE_MIME_EXT[mime];
+    if (knownExt) return knownExt;
+
+    const subtype = mime.split('/')[1];
+    if (!subtype) return null;
+
+    const sanitizedSubtype = subtype
+        .split(';')[0]
+        .split('+')[0]
+        .toLowerCase()
+        .replace(/[^a-z0-9._-]/g, '');
+
+    return sanitizedSubtype || null;
 }
 function sniffImageMime(buffer: Buffer): { mime: string; ext: string } | null {
     // ... (Your existing sniffImageMime function content)
@@ -216,13 +228,7 @@ export const dmMessagePostController = async (req: AuthenticatedRequest, res: Re
                 if (sniff) contentType = sniff.mime;
             }
 
-            if (!contentType) {
-                return res.status(400).json({ msg: 'Could not determine file MIME type.' });
-            }
-
-            if (!extFromMime(contentType)) {
-                return res.status(415).json({ msg: `Unsupported file type: ${uploadedFile.originalname || contentType}` });
-            }
+            if (!contentType) contentType = 'application/octet-stream';
 
             const fileId = v4();
             const fileExt = extFromMime(contentType) || (uploadedFile.originalname?.split('.').pop()?.toLowerCase() || 'bin');
@@ -354,13 +360,8 @@ export const channelmessagePostController = async (req:AuthenticatedRequest, res
                 const sniff = sniffImageMime(uploadedFile.buffer);
                 if (sniff) contentType = sniff.mime;
             }
-            if (!contentType) {
-                return res.status(400).json({ msg: 'Could not determine file MIME type.' });
-            }
-            if (!extFromMime(contentType)) {
-                return res.status(415).json({ msg: `Unsupported file type: ${uploadedFile.originalname || contentType}` });
-            }
-            const fileExt = extFromMime(contentType) || uploadedFile.originalname.split('.').pop() || 'bin';
+            if (!contentType) contentType = 'application/octet-stream';
+            const fileExt = extFromMime(contentType) || uploadedFile.originalname?.split('.').pop()?.toLowerCase() || 'bin';
             const safeExt = fileExt.replace(/[^a-z0-9]/g, '');
             const fileName = `${v4()}.${safeExt}`;
 
