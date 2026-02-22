@@ -141,6 +141,19 @@ function withMediaUrls<T extends { media_url?: unknown }>(message: T): T & { med
     };
 }
 
+function getDmPreview(message?: { content?: unknown; media_urls?: unknown }): string {
+    if (!message) return '';
+
+    const content = typeof message.content === 'string' ? message.content.trim() : '';
+    if (content) return content;
+
+    if (Array.isArray(message.media_urls) && message.media_urls.length > 0) {
+        return '[Attachment]';
+    }
+
+    return '';
+}
+
 
 // --- CONTROLLERS ---
 
@@ -288,7 +301,6 @@ export const dmMessagePostController = async (req: AuthenticatedRequest, res: Re
         }
         
         const io = getIO();
-        io.to(savedMessage.channel_id).emit("new_message", fullMessage || savedMessage);
         // 5. Broadcast via Sockets (check local map, then Redis for cross-instance)
         const socketMessage = withMediaUrls(fullMessage || savedMessage);
 
@@ -707,6 +719,7 @@ export const getDmMessages = async (req: AuthenticatedRequest, res: Response): P
         })
             const latestTimestamp =
                 msgs.length > 0 ? msgs[0].timestamp : new Date(0).toISOString()
+            const latestMessagePreview = getDmPreview(msgs[0])
 
             return {
                 thread_id: thread.id,
@@ -714,7 +727,8 @@ export const getDmMessages = async (req: AuthenticatedRequest, res: Response): P
                 other_user: otherUser,
                 unread_count: unreadCountMap.get(thread.id) || 0,
                 recipient_id: otherUserId,
-                latest_message_timestamp: latestTimestamp
+                latest_message_timestamp: latestTimestamp,
+                latest_message_preview: latestMessagePreview
             }
         })
 
