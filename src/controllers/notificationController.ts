@@ -2,75 +2,129 @@ import { Response } from 'express';
 import { supabase } from '../client/supabase';
 import { AuthenticatedRequest } from '../middleware/authMiddleware';
 
-/**
- * Register or update a push token for the authenticated user.
- * Uses upsert on push_token to avoid duplicates.
- */
+type DeviceType = 'ios' | 'android' | null;
+
+function normalizePushToken(value: unknown): string | null {
+  if (typeof value !== 'string') return null;
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed : null;
+}
+
+function normalizeDeviceType(value: unknown): DeviceType {
+  if (value === 'ios' || value === 'android') return value;
+  return null;
+}
+
+function isExpoPushToken(pushToken: string): boolean {
+  return /^ExponentPushToken\[[^\]]+\]$/.test(pushToken) || /^ExpoPushToken\[[^\]]+\]$/.test(pushToken);
+}
+
 export const registerPushToken = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
-    const userId = req.user?.sub;
+  const userId = req.user?.sub;
+  const pushToken = normalizePushToken(req.body?.push_token);
+  const deviceType = normalizeDeviceType(req.body?.device_type);
 
-    if (!userId) {
-        res.status(401).json({ error: 'Unauthorized: No user context.' });
-        return;
+  if (!userId) {
+    res.status(401).json({ error: 'Unauthorized' });
+    return;
+  }
+
+  if (!pushToken) {
+    res.status(400).json({ error: 'push_token is required' });
+    return;
+  }
+
+  if (!isExpoPushToken(pushToken)) {
+    res.status(400).json({ error: 'Invalid Expo push token format' });
+    return;
+  }
+
+  try {
+    // Keep a token attached to one user only.
+    await supabase
+      .from('user_push_tokens')
+      .delete()
+      .eq('push_token', pushToken)
+      .neq('user_id', userId);
+
+    const { data: existing, error: existingError } = await supabase
+      .from('user_push_tokens')
+      .select('user_id, push_token')
+      .eq('user_id', userId)
+      .eq('push_token', pushToken)
+      .maybeSingle();
+
+    if (existingError) {
+      console.error('[NotificationController] Failed to check existing token:', existingError.message);
+      res.status(500).json({ error: 'Failed to register push token' });
+      return;
     }
 
-    const { push_token, device_type } = req.body;
-
-    if (!push_token || typeof push_token !== 'string') {
-        res.status(400).json({ error: 'push_token is required and must be a string.' });
-        return;
+    if (existing) {
+      res.status(200).json({ message: 'Push token already registered' });
+      return;
     }
 
-    const { error } = await supabase
+    // Attempt insert with device_type when available; retry without it for legacy schemas.
+    const payloadWithDevice = deviceType
+      ? { user_id: userId, push_token: pushToken, device_type: deviceType }
+      : { user_id: userId, push_token: pushToken };
+
+    let { error: insertError } = await supabase.from('user_push_tokens').insert(payloadWithDevice);
+
+    if (insertError && deviceType) {
+      const fallback = await supabase
         .from('user_push_tokens')
-        .upsert(
-            {
-                user_id: userId,
-                push_token,
-                device_type: device_type ?? 'android',
-                updated_at: new Date().toISOString(),
-            },
-            { onConflict: 'push_token' }
-        );
-
-    if (error) {
-        console.error('[NotificationController] Error upserting push token:', error);
-        res.status(500).json({ error: 'Failed to register push token.', detail: error.message });
-        return;
+        .insert({ user_id: userId, push_token: pushToken });
+      insertError = fallback.error;
     }
 
-    res.status(200).json({ message: 'Push token registered successfully.' });
+    if (insertError) {
+      console.error('[NotificationController] Failed to insert push token:', insertError.message);
+      res.status(500).json({ error: 'Failed to register push token' });
+      return;
+    }
+
+    res.status(201).json({ message: 'Push token registered' });
+  } catch (error: any) {
+    console.error('[NotificationController] registerPushToken error:', error?.message || error);
+    res.status(500).json({ error: 'Failed to register push token' });
+  }
 };
 
-/**
- * Remove a push token (e.g. on logout).
- */
 export const removePushToken = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
-    const userId = req.user?.sub;
+  const userId = req.user?.sub;
+  const pushToken = normalizePushToken(req.body?.push_token ?? req.query?.push_token);
 
-    if (!userId) {
-        res.status(401).json({ error: 'Unauthorized: No user context.' });
-        return;
+  if (!userId) {
+    res.status(401).json({ error: 'Unauthorized' });
+    return;
+  }
+
+  try {
+    let deleteQuery = supabase
+      .from('user_push_tokens')
+      .delete()
+      .eq('user_id', userId);
+
+    if (pushToken) {
+      deleteQuery = deleteQuery.eq('push_token', pushToken);
     }
 
-    const { push_token } = req.body;
-
-    if (!push_token || typeof push_token !== 'string') {
-        res.status(400).json({ error: 'push_token is required and must be a string.' });
-        return;
-    }
-
-    const { error } = await supabase
-        .from('user_push_tokens')
-        .delete()
-        .eq('user_id', userId)
-        .eq('push_token', push_token);
+    const { data, error } = await deleteQuery.select('push_token');
 
     if (error) {
-        console.error('[NotificationController] Error removing push token:', error);
-        res.status(500).json({ error: 'Failed to remove push token.' });
-        return;
+      console.error('[NotificationController] Failed to remove push token:', error.message);
+      res.status(500).json({ error: 'Failed to remove push token' });
+      return;
     }
 
-    res.status(200).json({ message: 'Push token removed successfully.' });
+    res.status(200).json({
+      message: pushToken ? 'Push token removed' : 'Push tokens removed',
+      removed: data?.length || 0,
+    });
+  } catch (error: any) {
+    console.error('[NotificationController] removePushToken error:', error?.message || error);
+    res.status(500).json({ error: 'Failed to remove push token' });
+  }
 };
