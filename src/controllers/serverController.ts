@@ -1296,10 +1296,9 @@ export const getServerInvites = async (req: AuthenticatedRequest, res: Response)
 
     const { data: invites, error: invitesError } = await supabase
       .from('invites')
-      .select('id, inviter_id, use_limit, expiry, people_joined, is_valid, created_at')
+      .select('id, inviter_id, use_limit, expiry, people_joined, is_valid')
       .eq('server_id', serverId)
-      .eq('is_valid', true)
-      .order('created_at', { ascending: false });
+      .eq('is_valid', true);
 
     if (invitesError) {
       console.error('Error fetching server invites:', invitesError);
