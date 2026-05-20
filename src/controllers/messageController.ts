@@ -755,7 +755,9 @@ export const getDmThreadMessages = async (req: Request, res: Response): Promise<
 export const getDmMessages = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
     try {
         const user_id = req.user?.sub;
-        const offset = Math.max(0, parseInt(req.query?.offset as string, 10) || 0);
+        const rawOffset = req.query?.offset;
+        const shouldPaginate = rawOffset !== undefined;
+        const offset = Math.max(0, parseInt(rawOffset as string, 10) || 0);
         const pageSize = 15;
 
         if (!user_id || typeof user_id !== 'string') {
@@ -817,7 +819,9 @@ export const getDmMessages = async (req: AuthenticatedRequest, res: Response): P
                 new Date(a.latestMessage?.timestamp || 0).getTime()
         );
 
-        const paginatedSummaries = threadSummaries.slice(offset, offset + pageSize);
+        const paginatedSummaries = shouldPaginate
+            ? threadSummaries.slice(offset, offset + pageSize)
+            : threadSummaries;
         const paginatedMessages = await Promise.all(
             paginatedSummaries.map(async ({ thread }) => ({
                 threadId: thread.id,
@@ -850,7 +854,7 @@ export const getDmMessages = async (req: AuthenticatedRequest, res: Response): P
             };
         });
 
-        const hasMore = offset + pageSize < threadSummaries.length;
+        const hasMore = shouldPaginate && offset + pageSize < threadSummaries.length;
 
         res.status(200).json({
             threads: groupedThreads,
