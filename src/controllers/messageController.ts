@@ -313,8 +313,13 @@ export const dmMessagePostController = async (req: AuthenticatedRequest, res: Re
             io.to(senderSocketId).emit("dm_confirmed", socketMessage);
         }
 
-        // Fire-and-forget: push notification for DM
-        sendDmPushNotification(sender_id, receiver_id, content || '').catch(console.error);
+        // Fire-and-forget push for receiver (app may be backgrounded/offline).
+        sendDmPushNotification(
+            sender_id,
+            receiver_id,
+            getDmPreview(socketMessage),
+            threadId
+        ).catch(console.error);
 
         return res.status(200).json({ message: withMediaUrls(savedMessage) });
     } catch (e: any) {
@@ -467,8 +472,9 @@ export const channelmessagePostController = async (req: AuthenticatedRequest, re
         const io = getIO();
         io.to(channel_id).emit("new_message", payloadMessage);
 
-        // Fire-and-forget: push notification for channel message
-        sendChannelPushNotification(sender_id, channel_id, content || '').catch(console.error);
+        // Fire-and-forget push for offline users.
+        const channelPreview = (content || '').trim() || '[Attachment]';
+        sendChannelPushNotification(sender_id, channel_id, channelPreview).catch(console.error);
 
         return res.status(200).json(payloadMessage);
 

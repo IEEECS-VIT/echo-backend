@@ -266,7 +266,12 @@ export const setupChatSocket = (io: Server) => {
         }
 
         // Fire-and-forget: push notification (app may be backgrounded even if socket exists)
-        sendDmPushNotification(verifiedSenderId, receiverId, normalizedMessage).catch(console.error);
+        sendDmPushNotification(
+          verifiedSenderId,
+          receiverId,
+          normalizedMessage,
+          String(savedDm.thread_id || threadId)
+        ).catch(console.error);
 
       } catch (error) {
         console.error("Failed to process DM:", error);
