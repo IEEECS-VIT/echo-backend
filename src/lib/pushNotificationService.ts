@@ -24,6 +24,14 @@ type PushMessage = {
   sound?: string;
 };
 
+type AttachmentType = 'image' | 'audio' | 'file';
+
+type AttachmentPreviewRow = {
+  message_id?: string;
+  dm_message_id?: string;
+  attachment_type: AttachmentType;
+};
+
 const MAX_PREVIEW_MESSAGES = 3;
 const PREVIEW_LINE_MAX = 90;
 const PREVIEW_BODY_MAX = 360;
@@ -126,6 +134,39 @@ function previewFromMessage(content: unknown, mediaUrl: unknown): string {
   return 'New message';
 }
 
+function previewFromMessageWithAttachments(
+  content: unknown,
+  mediaUrl: unknown,
+  attachments: AttachmentPreviewRow[] = []
+): string {
+  const text = typeof content === 'string' ? content.trim() : '';
+  if (text) return toSingleLine(text);
+
+  if (attachments.some((attachment) => attachment.attachment_type === 'audio')) {
+    return 'Sent a voice message';
+  }
+
+  return previewFromMessage(content, mediaUrl);
+}
+
+function buildAttachmentPreviewMap<T extends AttachmentPreviewRow>(
+  rows: T[],
+  key: 'message_id' | 'dm_message_id'
+): Map<string, T[]> {
+  const map = new Map<string, T[]>();
+
+  rows.forEach((row) => {
+    const id = row[key];
+    if (!id) return;
+
+    const existing = map.get(id) || [];
+    existing.push(row);
+    map.set(id, existing);
+  });
+
+  return map;
+}
+
 function buildPreviewBody(lines: string[]): string {
   const normalized = lines
     .map((line) => toSingleLine(line))
@@ -143,7 +184,7 @@ function buildPreviewBody(lines: string[]): string {
 async function getLatestDmPreviewLines(threadId: string, senderId: string): Promise<string[]> {
   const { data, error } = await supabase
     .from('dm_messages')
-    .select('content, media_url, timestamp')
+    .select('id, content, media_url, timestamp')
     .eq('thread_id', threadId)
     .eq('sender_id', senderId)
     .order('timestamp', { ascending: false })
@@ -151,16 +192,38 @@ async function getLatestDmPreviewLines(threadId: string, senderId: string): Prom
 
   if (error || !data || data.length === 0) return [];
 
+  const messageIds = data.map((msg: any) => msg.id).filter((id: unknown): id is string => typeof id === 'string');
+  let attachmentsByMessageId = new Map<string, AttachmentPreviewRow[]>();
+
+  if (messageIds.length > 0) {
+    const { data: attachmentRows, error: attachmentError } = await supabase
+      .from('dm_message_attachments')
+      .select('dm_message_id, attachment_type')
+      .in('dm_message_id', messageIds);
+
+    if (!attachmentError && attachmentRows) {
+      attachmentsByMessageId = buildAttachmentPreviewMap(
+        attachmentRows as AttachmentPreviewRow[],
+        'dm_message_id'
+      );
+    }
+  }
+
   return data
     .slice()
     .reverse()
-    .map((msg: any) => previewFromMessage(msg.content, msg.media_url));
+    .map((msg: any) => previewFromMessageWithAttachments(
+      msg.content,
+      msg.media_url,
+      attachmentsByMessageId.get(msg.id) || []
+    ));
 }
 
 async function getLatestChannelPreviewLines(channelId: string): Promise<string[]> {
   const { data, error } = await supabase
     .from('messages')
     .select(`
+      id,
       content,
       media_url,
       timestamp,
@@ -174,12 +237,33 @@ async function getLatestChannelPreviewLines(channelId: string): Promise<string[]
 
   if (error || !data || data.length === 0) return [];
 
+  const messageIds = data.map((msg: any) => msg.id).filter((id: unknown): id is string => typeof id === 'string');
+  let attachmentsByMessageId = new Map<string, AttachmentPreviewRow[]>();
+
+  if (messageIds.length > 0) {
+    const { data: attachmentRows, error: attachmentError } = await supabase
+      .from('message_attachments')
+      .select('message_id, attachment_type')
+      .in('message_id', messageIds);
+
+    if (!attachmentError && attachmentRows) {
+      attachmentsByMessageId = buildAttachmentPreviewMap(
+        attachmentRows as AttachmentPreviewRow[],
+        'message_id'
+      );
+    }
+  }
+
   return data
     .slice()
     .reverse()
     .map((msg: any) => {
       const senderName = msg?.sender?.username || 'Someone';
-      const preview = previewFromMessage(msg?.content, msg?.media_url);
+      const preview = previewFromMessageWithAttachments(
+        msg?.content,
+        msg?.media_url,
+        attachmentsByMessageId.get(msg?.id) || []
+      );
       return `${toSingleLine(senderName, 24)}: ${preview}`;
     });
 }
