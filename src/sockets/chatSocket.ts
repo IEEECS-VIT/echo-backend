@@ -4,6 +4,7 @@ import { supabase } from "../client/supabase";
 import { checkChannelSendPermission } from "../controllers/channelController";
 import { saveDMMessage } from "../lib/dmMessageServices";
 import { saveMessage } from "../lib/messageServices";
+import { extractGifMediaUrl } from "../lib/messageMedia";
 import { sendChannelPushNotification, sendDmPushNotification } from "../lib/pushNotificationService";
 import { deleteUserSocket, getUserSocket, setUserSocket } from "../redis/userSocketStore";
 
@@ -128,10 +129,12 @@ export const setupChatSocket = (io: Server) => {
         // 2. payload from services that we use to save the data..
         // Using verifiedSenderId instead of data.senderId for security
         // Save the message to the database
+        const gifMediaUrl = extractGifMediaUrl(data.content);
         const savedMessage = await saveMessage({
-          content: data.content,
+          content: gifMediaUrl ? '' : data.content,
           channel_id: data.channelId,
           sender_id: verifiedSenderId,
+          media_url: gifMediaUrl,
         });
 
         // Add tempId to the saved message for frontend matching
@@ -145,7 +148,11 @@ export const setupChatSocket = (io: Server) => {
         socket.to(data.channelId).emit('new_message', savedMessage);
 
         // Fire-and-forget: push notification to offline channel members
-        sendChannelPushNotification(verifiedSenderId, data.channelId, data.content).catch(console.error);
+        sendChannelPushNotification(
+          verifiedSenderId,
+          data.channelId,
+          gifMediaUrl ? '' : data.content
+        ).catch(console.error);
 
       } catch (error) {
         // If an error occurs, log it and notify the sender
@@ -175,9 +182,11 @@ export const setupChatSocket = (io: Server) => {
       }
 
       const normalizedMessage = (message || '').trim();
+      const gifMediaUrl = extractGifMediaUrl(normalizedMessage);
       const normalizedMediaUrls = [
         ...(Array.isArray(media_urls) ? media_urls : []),
         ...(typeof media_url === 'string' && media_url.trim() ? [media_url.trim()] : []),
+        ...(gifMediaUrl ? [gifMediaUrl] : []),
       ].filter((item) => typeof item === 'string' && item.trim().length > 0);
 
       if (!receiverId || (!normalizedMessage && normalizedMediaUrls.length === 0)) {
@@ -290,4 +299,3 @@ export const setupChatSocket = (io: Server) => {
     });
   });
 };
-

@@ -345,7 +345,7 @@ export const getChannelPermissions = async (req: AuthenticatedRequest, res: Resp
       isOwner: isOwner
     });
   } catch (error: any) {
-    console.error('Error getting channel permissions:', error);
+
     res.status(500).json({ error: 'Server error' });
   }
 };
@@ -451,7 +451,7 @@ export const getChannelsWithAccess = async (req: AuthenticatedRequest, res: Resp
 
   } catch (error) {
     const err = error as Error;
-    console.error('Error in getChannelsWithAccess controller:', err.message);
+
     res.status(500).json({ error: 'Internal server error.', details: err.message });
   }
 };
@@ -572,7 +572,7 @@ export const createChannel = async (req: AuthenticatedRequest, res: Response): P
     });
 
     if (rpcError) {
-      console.error('RPC `create_channel_and_add_member` error:', rpcError);
+
       res.status(403).json({ message: 'Error creating channel', details: rpcError.message });
       return;
     }
@@ -593,7 +593,7 @@ export const createChannel = async (req: AuthenticatedRequest, res: Response): P
         .single();
 
       if (updateError) {
-        console.error('Error updating channel with category and permissions:', updateError);
+
       }
 
       res.status(201).json(updatedChannel || newChannel[0]);
@@ -603,7 +603,7 @@ export const createChannel = async (req: AuthenticatedRequest, res: Response): P
     res.status(201).json(newChannel?.[0]);
 
   } catch (err) {
-    console.error('Unexpected error in createChannel controller:', err);
+
     const details = err instanceof Error ? err.message : 'An unknown error occurred.';
     res.status(500).json({ message: 'An unexpected error occurred.', details });
   }
@@ -663,7 +663,7 @@ export const getChannels = async (req: AuthenticatedRequest, res: Response): Pro
 
   } catch (error) {
     const err = error as Error;
-    console.error('Error in getChannels controller:', err.message);
+
     res.status(500).json({ error: 'Internal server error.', details: err.message });
   }
 };
@@ -758,7 +758,7 @@ export const joinChannel = async (req: AuthenticatedRequest, res: Response): Pro
 
     } catch (error) {
         const err = error as Error;
-        console.error('Error in joinChannel controller:', err.message);
+
         res.status(500).json({ error: 'An unexpected internal server error occurred.' });
     }
 };

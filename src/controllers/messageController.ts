@@ -2,6 +2,7 @@ import { Request, Response } from "express";
 import { v4 } from 'uuid';
 import { supabase } from '../client/supabase';
 import { parseMentions, processMentions, resolveMentions } from '../lib/mentionParser';
+import { extractGifMediaUrl } from '../lib/messageMedia';
 import { sendChannelPushNotification, sendDmPushNotification } from '../lib/pushNotificationService';
 import { AuthenticatedRequest } from "../middleware/authMiddleware";
 import { getUserSocket } from "../redis/userSocketStore";
@@ -228,6 +229,15 @@ function normalizeMediaUrls(mediaUrl: unknown): string[] {
     }
 
     return [trimmed];
+}
+
+function resolveGifMessageMedia(content: unknown, mediaUrl: string | null): { content: string; mediaUrl: string | null } {
+    const gifMediaUrl = extractGifMediaUrl(content);
+
+    return {
+        content: gifMediaUrl ? '' : (typeof content === 'string' ? content : ''),
+        mediaUrl: mediaUrl || gifMediaUrl,
+    };
 }
 
 function withMediaUrls<T extends { media_url?: unknown }>(message: T): T & { media_urls: string[] } {
@@ -631,6 +641,7 @@ export const dmMessagePostController = async (req: AuthenticatedRequest, res: Re
         const sender_id = req.user?.sub;
         // Support both upload.single() (req.file) and upload.fields() (req.files)
         const anyReq = req as any;
+        const resolvedMessage = resolveGifMessageMedia(content, null);
 
         console.log("Starting dmMessagePostController");
 
@@ -702,7 +713,7 @@ export const dmMessagePostController = async (req: AuthenticatedRequest, res: Re
         try {
             const uploadResult = await uploadMessageAttachments(uploadedFiles, durationMs);
             uploadedAttachments = uploadResult.attachments;
-            media_url = uploadResult.mediaUrl;
+            media_url = uploadResult.mediaUrl || resolvedMessage.mediaUrl;
         } catch (uploadError) {
             console.error('Error uploading file:', uploadError);
             return res.status(500).json({ error: 'Could not upload file.' });
@@ -712,7 +723,7 @@ export const dmMessagePostController = async (req: AuthenticatedRequest, res: Re
         // 4. Insert the message
         const newMessagePayload = {
             id: v4(),
-            content: content || '',
+            content: resolvedMessage.content,
             media_url,
             thread_id: threadId,
             sender_id,
@@ -828,11 +839,12 @@ export const channelmessagePostController = async (req: AuthenticatedRequest, re
         const id = v4();
         let uploadedAttachments: UploadedAttachment[] = [];
         let media_url: string | null = null;
+        const resolvedMessage = resolveGifMessageMedia(content, null);
 
         try {
             const uploadResult = await uploadMessageAttachments(uploadedFiles, durationMs);
             uploadedAttachments = uploadResult.attachments;
-            media_url = uploadResult.mediaUrl;
+            media_url = uploadResult.mediaUrl || resolvedMessage.mediaUrl;
         } catch (uploadError) {
             console.error(uploadError);
             return res.status(500).json({ 'error': 'Server error during file upload' });
@@ -844,7 +856,7 @@ export const channelmessagePostController = async (req: AuthenticatedRequest, re
                 id,
                 channel_id,
                 sender_id,
-                content,
+                content: resolvedMessage.content,
                 media_url,
                 reply_to // <-- ensure reply_to is stored
             })
@@ -864,8 +876,8 @@ export const channelmessagePostController = async (req: AuthenticatedRequest, re
         }
 
         // Handle mentions if content exists
-        if (content) {
-            const parsedMentions = parseMentions(content);
+        if (resolvedMessage.content) {
+            const parsedMentions = parseMentions(resolvedMessage.content);
 
             if (parsedMentions.mentions.length > 0) {
                 // First resolve mentions (convert usernames to user IDs)
@@ -877,7 +889,7 @@ export const channelmessagePostController = async (req: AuthenticatedRequest, re
                         id, // messageId
                         channel_id, // channelId
                         sender_id, // senderId
-                        content, // content
+                        resolvedMessage.content, // content
                         resolvedMentions // resolved mentions array with user IDs
                     );
                 }
@@ -1067,147 +1079,139 @@ async function emitReactionUpdate(target: ReactionTarget, reactions: MessageReac
     }));
 }
 
-export const addMessageReaction = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
-    try {
-        const userId = req.user?.sub;
-        const { message_id, dm_message_id, emoji } = req.body as {
-            message_id?: string;
-            dm_message_id?: string;
-            emoji?: unknown;
-        };
+export const toggleMessageReaction = async (
+  req: AuthenticatedRequest,
+  res: Response
+): Promise<void> => {
+  try {
+    const userId = req.user?.sub;
 
-        if (!userId) {
-            res.status(401).json({ error: 'Unauthorized' });
-            return;
-        }
+    const { message_id, dm_message_id, emoji } = req.body;
 
-        const normalizedEmoji = normalizeEmoji(emoji);
-        if (!normalizedEmoji) {
-            res.status(400).json({ error: 'emoji is required.' });
-            return;
-        }
+    if (!userId) {
+      res.status(401).json({ error: "Unauthorized" });
+      return;
+    }
 
-        const targetResult = await resolveReactionTarget(userId, message_id, dm_message_id);
-        if ('error' in targetResult) {
-            res.status(targetResult.status).json({ error: targetResult.error });
-            return;
-        }
+    const normalizedEmoji = normalizeEmoji(emoji);
 
-        const target = targetResult;
-        const reactionFilter = target.kind === 'channel'
-            ? supabase.from('message_reactions').select('id').eq('message_id', target.messageId).eq('user_id', userId).eq('emoji', normalizedEmoji)
-            : supabase.from('message_reactions').select('id').eq('dm_message_id', target.messageId).eq('user_id', userId).eq('emoji', normalizedEmoji);
+    if (!normalizedEmoji) {
+      res.status(400).json({ error: "emoji is required" });
+      return;
+    }
 
-        const { data: existingReaction, error: existingError } = await reactionFilter.maybeSingle();
-        if (existingError && existingError.code !== 'PGRST116') {
-            res.status(500).json({ error: existingError.message });
-            return;
-        }
+    const targetResult = await resolveReactionTarget(
+      userId,
+      message_id,
+      dm_message_id
+    );
 
-        if (!existingReaction) {
-            const payload = target.kind === 'channel'
-                ? {
-                    message_id: target.messageId,
-                    dm_message_id: null,
-                    user_id: userId,
-                    emoji: normalizedEmoji,
-                }
-                : {
-                    message_id: null,
-                    dm_message_id: target.messageId,
-                    user_id: userId,
-                    emoji: normalizedEmoji,
-                };
+    if ("error" in targetResult) {
+      res.status(targetResult.status).json({
+        error: targetResult.error,
+      });
+      return;
+    }
 
-            const { error: insertError } = await supabase
-                .from('message_reactions')
-                .insert(payload);
+    const target = targetResult;
 
-            if (insertError) {
-                res.status(500).json({ error: insertError.message });
-                return;
+    const reactionQuery =
+      target.kind === "channel"
+        ? supabase
+            .from("message_reactions")
+            .select("id")
+            .eq("message_id", target.messageId)
+            .eq("user_id", userId)
+            .eq("emoji", normalizedEmoji)
+        : supabase
+            .from("message_reactions")
+            .select("id")
+            .eq("dm_message_id", target.messageId)
+            .eq("user_id", userId)
+            .eq("emoji", normalizedEmoji);
+
+    const { data: existingReaction, error: reactionError } =
+      await reactionQuery.maybeSingle();
+
+    if (reactionError && reactionError.code !== "PGRST116") {
+      res.status(500).json({
+        error: reactionError.message,
+      });
+      return;
+    }
+
+    let action: "added" | "removed";
+
+    if (existingReaction) {
+      const { error } = await supabase
+        .from("message_reactions")
+        .delete()
+        .eq("id", existingReaction.id);
+
+      if (error) {
+        res.status(500).json({ error: error.message });
+        return;
+      }
+
+      action = "removed";
+    } else {
+      const payload =
+        target.kind === "channel"
+          ? {
+              message_id: target.messageId,
+              dm_message_id: null,
+              user_id: userId,
+              emoji: normalizedEmoji,
             }
-        }
+          : {
+              message_id: null,
+              dm_message_id: target.messageId,
+              user_id: userId,
+              emoji: normalizedEmoji,
+            };
 
-        const reactions = target.kind === 'channel'
-            ? await getMessageReactionSummary(target.messageId)
-            : await getDmMessageReactionSummary(target.messageId);
+      const { error } = await supabase
+        .from("message_reactions")
+        .insert(payload);
 
-        await emitReactionUpdate(target, reactions);
-
-        res.status(200).json({
-            message: 'Reaction added successfully.',
-            data: target.kind === 'channel'
-                ? { message_id: target.messageId, reactions }
-                : { dm_message_id: target.messageId, reactions },
+      if (error) {
+        res.status(500).json({
+          error: error.message,
         });
-    } catch (error: any) {
-        console.error('Error in addMessageReaction:', error);
-        res.status(500).json({ error: error.message || 'Server error' });
+        return;
+      }
+
+      action = "added";
     }
+
+    const reactions =
+      target.kind === "channel"
+        ? await getMessageReactionSummary(target.messageId)
+        : await getDmMessageReactionSummary(target.messageId);
+
+    await emitReactionUpdate(target, reactions);
+
+    res.status(200).json({
+      action,
+      data:
+        target.kind === "channel"
+          ? {
+              message_id: target.messageId,
+              reactions,
+            }
+          : {
+              dm_message_id: target.messageId,
+              reactions,
+            },
+    });
+  } catch (error: any) {
+    console.error(error);
+
+    res.status(500).json({
+      error: error.message || "Server Error",
+    });
+  }
 };
-
-export const removeMessageReaction = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
-    try {
-        const userId = req.user?.sub;
-        const { message_id, dm_message_id, emoji } = req.body as {
-            message_id?: string;
-            dm_message_id?: string;
-            emoji?: unknown;
-        };
-
-        if (!userId) {
-            res.status(401).json({ error: 'Unauthorized' });
-            return;
-        }
-
-        const normalizedEmoji = normalizeEmoji(emoji);
-        if (!normalizedEmoji) {
-            res.status(400).json({ error: 'emoji is required.' });
-            return;
-        }
-
-        const targetResult = await resolveReactionTarget(userId, message_id, dm_message_id);
-        if ('error' in targetResult) {
-            res.status(targetResult.status).json({ error: targetResult.error });
-            return;
-        }
-
-        const target = targetResult;
-        const deleteQuery = target.kind === 'channel'
-            ? supabase.from('message_reactions').delete().eq('message_id', target.messageId).eq('user_id', userId).eq('emoji', normalizedEmoji)
-            : supabase.from('message_reactions').delete().eq('dm_message_id', target.messageId).eq('user_id', userId).eq('emoji', normalizedEmoji);
-
-        const { data: deletedReaction, error: deleteError } = await deleteQuery.select('id').maybeSingle();
-
-        if (deleteError && deleteError.code !== 'PGRST116') {
-            res.status(500).json({ error: deleteError.message });
-            return;
-        }
-
-        if (!deletedReaction) {
-            res.status(404).json({ error: 'Reaction not found.' });
-            return;
-        }
-
-        const reactions = target.kind === 'channel'
-            ? await getMessageReactionSummary(target.messageId)
-            : await getDmMessageReactionSummary(target.messageId);
-
-        await emitReactionUpdate(target, reactions);
-
-        res.status(200).json({
-            message: 'Reaction removed successfully.',
-            data: target.kind === 'channel'
-                ? { message_id: target.messageId, reactions }
-                : { dm_message_id: target.messageId, reactions },
-        });
-    } catch (error: any) {
-        console.error('Error in removeMessageReaction:', error);
-        res.status(500).json({ error: error.message || 'Server error' });
-    }
-};
-
 export const getMessageReactions = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
     try {
         const userId = req.user?.sub;

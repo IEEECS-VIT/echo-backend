@@ -12,14 +12,13 @@ const upload = multer({
 }); 
 
 import { authenticate } from '../middleware/authMiddleware';
-import { channelmessagePostController, messageGetController, getDmMessages, dmMessagePostController, getDmThreadMessages, getUnreadCounts, markThreadAsRead, addMessageReaction, removeMessageReaction, getMessageReactions, searchChannelMessages, searchDmMessages, getChannelMedia, getDmMedia, getPinnedMessages, pinMessage, unpinMessage } from "../controllers/messageController";
+import { channelmessagePostController, messageGetController, getDmMessages, dmMessagePostController, getDmThreadMessages, getUnreadCounts, markThreadAsRead, toggleMessageReaction, getMessageReactions, searchChannelMessages, searchDmMessages, getChannelMedia, getDmMedia, getPinnedMessages, pinMessage, unpinMessage } from "../controllers/messageController";
 
 router.post('/upload', authenticate, upload.fields([{name: 'image', maxCount: 6}, {name: 'file', maxCount: 6}]), channelmessagePostController);
 router.post('/upload_dm', authenticate, upload.fields([{ name: 'image', maxCount: 6 }, { name: 'file', maxCount: 6 }]), dmMessagePostController);
 router.get('/fetch', authenticate, messageGetController);
 router.get('/reactions', authenticate, getMessageReactions);
-router.post('/reactions', authenticate, addMessageReaction);
-router.delete('/reactions', authenticate, removeMessageReaction);
+router.post('/reactions/toggle', authenticate,toggleMessageReaction);
 router.get('/search/server/:serverId', authenticate, searchChannelMessages);
 router.get('/search/dm/:threadId', authenticate, searchDmMessages);
 router.get('/media/server/:serverId', authenticate, getChannelMedia);
