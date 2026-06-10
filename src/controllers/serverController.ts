@@ -1907,7 +1907,6 @@ export const getServerMembersWithVoicePresence = async (req: AuthenticatedReques
 
     // Import voice socket maps - dynamic import to avoid circular dependencies
     const { channelUsers, voiceStates } = await import('../sockets/voiceSocket');
-    const { userSocketMap } = await import('../sockets/chatSocket');
 
     // Check if user is the server owner or a member of the server
     const { data: serverData, error: serverError } = await supabase
@@ -1948,7 +1947,8 @@ export const getServerMembersWithVoicePresence = async (req: AuthenticatedReques
           id,
           username,
           fullname,
-          avatar_url
+          avatar_url,
+          status
         )
       `)
       .eq('server_id', serverId);
@@ -2002,10 +2002,6 @@ export const getServerMembersWithVoicePresence = async (req: AuthenticatedReques
       const user = member.users;
       const userIdFromMember = member.user_id;
       
-      // Check if user is online (has an active socket connection)
-      const socketId = userSocketMap.get(userIdFromMember);
-      const isOnline = !!socketId;
-      
       // Get voice channel info if user is in a voice channel
       const voiceChannel = userVoicePresence.get(userIdFromMember);
 
@@ -2014,7 +2010,7 @@ export const getServerMembersWithVoicePresence = async (req: AuthenticatedReques
         username: user?.username || 'Unknown',
         fullname: user?.fullname || user?.username || 'Unknown',
         avatar_url: user?.avatar_url || null,
-        status: isOnline ? 'online' : 'offline',
+        status: user?.status || 'offline',
         voice_channel: voiceChannel || null
       };
     });

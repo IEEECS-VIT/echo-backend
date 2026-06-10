@@ -62,11 +62,10 @@ async function removeInvalidTokensFromDb(tokens: string[]): Promise<void> {
     .in('push_token', uniqueTokens);
 
   if (error) {
-    console.error('[PushNotification] Failed to remove invalid tokens:', error.message);
+
     return;
   }
 
-  console.log(`[PushNotification] Removed ${uniqueTokens.length} invalid push token(s) from DB`);
 }
 
 /**
@@ -79,7 +78,7 @@ async function getTokensForUser(userId: string): Promise<string[]> {
     .eq('user_id', userId);
 
   if (error) {
-    console.error('[PushNotification] Error fetching tokens for user:', userId, error.message);
+
     return [];
   }
 
@@ -294,7 +293,7 @@ async function sendExpoPush(messages: PushMessage[]): Promise<void> {
 
       if (!response.ok) {
         const text = await response.text();
-        console.error('[PushNotification] Expo Push API error:', response.status, text);
+
         continue;
       }
 
@@ -307,7 +306,6 @@ async function sendExpoPush(messages: PushMessage[]): Promise<void> {
         if (ticket?.status !== 'error') continue;
 
         const ticketError = ticket?.message || ticket?.details?.error || 'unknown_error';
-        console.error('[PushNotification] Expo ticket error:', ticketError);
 
         // Expo recommends removing DeviceNotRegistered tokens.
         if (ticket?.details?.error === 'DeviceNotRegistered') {
@@ -319,9 +317,8 @@ async function sendExpoPush(messages: PushMessage[]): Promise<void> {
         await removeInvalidTokensFromDb(invalidTokens);
       }
 
-      console.log(`[PushNotification] Sent ${chunk.length} notification(s)`);
     } catch (err: any) {
-      console.error('[PushNotification] Failed to call Expo Push API:', err?.message || err);
+
     }
   }
 }
@@ -339,7 +336,7 @@ export async function sendDmPushNotification(
   try {
     const tokens = await getTokensForUser(receiverId);
     if (tokens.length === 0) {
-      console.log(`[PushNotification] No push tokens for DM receiver ${receiverId}`);
+
       return;
     }
 
@@ -374,7 +371,7 @@ export async function sendDmPushNotification(
 
     await sendExpoPush(messages);
   } catch (err: any) {
-    console.error('[PushNotification] sendDmPushNotification error:', err?.message || err);
+
   }
 }
 
@@ -395,7 +392,7 @@ export async function sendChannelPushNotification(
       .single();
 
     if (channelError || !channel) {
-      console.error('[PushNotification] Could not find channel:', channelId, channelError?.message);
+
       return;
     }
 
@@ -420,7 +417,7 @@ export async function sendChannelPushNotification(
       try {
         redisSocket = await getUserSocket(member.user_id);
       } catch (error: any) {
-        console.warn('[PushNotification] Redis socket lookup failed:', error?.message || error);
+
       }
 
       if (redisSocket) continue;
@@ -428,7 +425,7 @@ export async function sendChannelPushNotification(
     }
 
     if (offlineUserIds.length === 0) {
-      console.log('[PushNotification] All channel members are online, skipping push');
+
       return;
     }
 
@@ -439,12 +436,12 @@ export async function sendChannelPushNotification(
         const canView = await checkChannelAccess(userId, channelId);
         if (canView) allowedOfflineUserIds.push(userId);
       } catch (error: any) {
-        console.warn('[PushNotification] Channel access check failed:', error?.message || error);
+
       }
     }
 
     if (allowedOfflineUserIds.length === 0) {
-      console.log('[PushNotification] No offline users have access to this channel');
+
       return;
     }
 
@@ -455,7 +452,7 @@ export async function sendChannelPushNotification(
       .in('user_id', allowedOfflineUserIds);
 
     if (tokenError || !tokenRows || tokenRows.length === 0) {
-      console.log('[PushNotification] No push tokens for eligible channel members');
+
       return;
     }
 
@@ -492,6 +489,6 @@ export async function sendChannelPushNotification(
 
     await sendExpoPush(messages);
   } catch (err: any) {
-    console.error('[PushNotification] sendChannelPushNotification error:', err?.message || err);
+
   }
 }

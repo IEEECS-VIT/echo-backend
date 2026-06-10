@@ -62,12 +62,12 @@ export const saveDMMessage = async (data: DMmessageData) => {
     .single();
 
   if (error) {
-    console.error('Database Error:', error);
+
     throw new Error('Could not save the direct message.');
   }
 
   if (mediaUrl) {
-    console.log("media receved. ", mediaUrl);
+
   }
 
   // Flatten sender info for frontend consistency (matches REST API response structure)

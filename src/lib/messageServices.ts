@@ -44,7 +44,7 @@ export const saveMessage = async (data: MessageData) => {
     .single(); // We expect just one row back
 
   if (error) {
-    console.error('Database Error:', error);
+
     throw new Error('Could not save the message.'); // Throw an error if it fails
   }
 
