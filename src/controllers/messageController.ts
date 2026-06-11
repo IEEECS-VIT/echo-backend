@@ -2253,21 +2253,28 @@ export const getDmMessages = async (req: AuthenticatedRequest, res: Response): P
                 .map(({ latestMessage }) => latestMessage?.id)
                 .filter((id): id is string => typeof id === 'string')
         );
-        const paginatedMessages = await Promise.all(
-            paginatedSummaries.map(async ({ thread }) => ({
-                threadId: thread.id,
-                messages: await getThreadMessagesPage(thread.id, pageSize),
-            }))
-        );
-        const messagesByThread = new Map(
-            paginatedMessages.map(({ threadId, messages }) => [threadId, messages])
-        );
+
+        const includeThreadMessages = !shouldPaginate;
+        const threadMessagesByThreadId = includeThreadMessages
+            ? new Map<string, { messages: Array<any>; hasMore: boolean }>()
+            : null;
+
+        if (includeThreadMessages) {
+            await Promise.all(
+                paginatedSummaries.map(async ({ thread }) => {
+                    const latestMessages = await getThreadMessagesPage(thread.id, pageSize + 1);
+                    threadMessagesByThreadId?.set(thread.id, {
+                        messages: latestMessages.slice(0, pageSize).reverse(),
+                        hasMore: latestMessages.length > pageSize,
+                    });
+                })
+            );
+        }
 
         const groupedThreads = paginatedSummaries.map(({ thread, latestMessage, unreadCount }) => {
             const otherUserId =
                 thread.user1_id === user_id ? thread.user2_id : thread.user1_id;
             const otherUser = usersMap.get(otherUserId) || null;
-            const msgs = messagesByThread.get(thread.id) || [];
             const latestTimestamp =
                 latestMessage?.timestamp || new Date(0).toISOString();
             const latestMessagePreview = getDmPreview(
@@ -2279,14 +2286,17 @@ export const getDmMessages = async (req: AuthenticatedRequest, res: Response): P
                     : undefined
             );
 
+            const threadMessages = threadMessagesByThreadId?.get(thread.id);
+
             return {
                 thread_id: thread.id,
-                messages: msgs,
                 other_user: otherUser,
                 unread_count: unreadCount,
                 recipient_id: otherUserId,
                 latest_message_timestamp: latestTimestamp,
-                latest_message_preview: latestMessagePreview
+                latest_message_preview: latestMessagePreview,
+                messages: threadMessages?.messages ?? undefined,
+                has_more_messages: threadMessages?.hasMore ?? undefined,
             };
         });
 
