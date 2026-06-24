@@ -2,6 +2,7 @@ import { Request, Response, NextFunction } from 'express';
 import { createHash } from 'crypto';
 import jwt from 'jsonwebtoken';
 import { supabase } from '../client/supabase';
+import { refreshSupabaseSession } from '../lib/sessionRefresh';
 
 const ACCESS_TOKEN_MAX_AGE = 60 * 60; // 1 hour
 const REFRESH_THRESHOLD = 5 * 60; // refresh if <5min left
@@ -157,9 +158,7 @@ const writeRefreshedSession = (
 };
 
 const refreshSession = async (refreshToken: string): Promise<RefreshedSessionResult | null> => {
-  const { data, error } = await supabase.auth.refreshSession({
-    refresh_token: refreshToken,
-  });
+  const { data, error } = await refreshSupabaseSession(refreshToken);
 
   if (error || !data.session) {
     return null;
@@ -188,6 +187,11 @@ const verifyAccessToken = async (token: string): Promise<JwtPayload | null> => {
 
   const decodedPayload = decodeJwtPayload(token);
   if (!decodedPayload) {
+    return null;
+  }
+
+  const nowSeconds = Math.floor(Date.now() / 1000);
+  if (decodedPayload.exp <= nowSeconds) {
     return null;
   }
 
