@@ -186,7 +186,7 @@ const verifyAccessToken = async (token: string): Promise<JwtPayload | null> => {
   }
 
   const decodedPayload = decodeJwtPayload(token);
-  if (!decodedPayload) {
+  if (!decodedPayload || !decodedPayload.exp) {
     return null;
   }
 
@@ -214,8 +214,33 @@ const verifyAccessToken = async (token: string): Promise<JwtPayload | null> => {
 export const authenticate = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   const authReq = req as AuthenticatedRequest;
   const mobileClient = isMobileClient(req);
+
+  // Mobile: never refresh in middleware. Validate token then pass through or return 401.
+  if (mobileClient) {
+    const accessToken = getAccessToken(req);
+    if (!accessToken) {
+      res.status(401).json({ message: 'No token provided' });
+      return;
+    }
+
+    try {
+      const payload = await verifyAccessToken(accessToken);
+      if (!payload?.exp) {
+        res.status(401).json({ message: 'Session expired. Please log in again.', code: 'SESSION_EXPIRED' });
+        return;
+      }
+      attachAuthenticatedUser(authReq, payload);
+      next();
+      return;
+    } catch {
+      res.status(401).json({ message: 'Session expired. Please log in again.', code: 'SESSION_EXPIRED' });
+      return;
+    }
+  }
+
+  // Web (below): validate + proactive refresh via cookies
   const accessToken = getAccessToken(req);
-  const refreshToken = getRefreshToken(req, mobileClient);
+  const refreshToken = getRefreshToken(req, false);
 
   if (!accessToken) {
     res.status(401).json({ message: 'No token provided' });
@@ -252,10 +277,7 @@ export const authenticate = async (req: Request, res: Response, next: NextFuncti
         const refreshedSession = await refreshSession(refreshToken);
 
         if (!refreshedSession) {
-          res.status(401).json({
-            message: 'Session expired. Please log in again.',
-            code: 'SESSION_EXPIRED',
-          });
+          res.status(401).json({ message: 'Session expired. Please log in again.', code: 'SESSION_EXPIRED' });
           return;
         }
 
@@ -264,20 +286,9 @@ export const authenticate = async (req: Request, res: Response, next: NextFuncti
         next();
         return;
       } catch {
-        res.status(401).json({
-          message: 'Session expired. Please log in again.',
-          code: 'SESSION_EXPIRED',
-        });
+        res.status(401).json({ message: 'Session expired. Please log in again.', code: 'SESSION_EXPIRED' });
         return;
       }
-    }
-
-    if (mobileClient) {
-      res.status(401).json({
-        message: 'Session expired. Please log in again.',
-        code: 'SESSION_EXPIRED',
-      });
-      return;
     }
 
     res.status(403).json({ message: 'Invalid token' });
